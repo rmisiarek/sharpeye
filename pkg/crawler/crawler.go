@@ -1,9 +1,10 @@
 package crawler
 
-// TODO: write comments to exported func
+// TODO: write comments to exported funcs
 
 import (
-	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"sync"
 
@@ -50,9 +51,9 @@ func (r *results) Read() {
 			if !open {
 				return
 			}
-			fmt.Println("[data]\t", data)
+			log.Println("[data]\t", data)
 		case err := <-r.err:
-			fmt.Println("[error]\t", err)
+			log.Println("[error]\t", err)
 		}
 	}
 }
@@ -66,7 +67,7 @@ func (r *results) WriteToSlice(s *[]string) {
 			}
 			*s = append(*s, data)
 		case err := <-r.err:
-			fmt.Println("[error]\t", err)
+			log.Println("[error] ", err)
 		}
 	}
 }
@@ -143,14 +144,14 @@ func crawl(url string, depth int, wg *sync.WaitGroup, cache *urlCache, res *resu
 		return
 	}
 
-	response, err := http.Get(url)
+	response, err := makeRequest(url)
 	if err != nil {
 		res.err <- err
 		return
 	}
 	defer response.Body.Close()
 
-	node, err := html.Parse(response.Body)
+	node, err := parseBody(response.Body)
 	if err != nil {
 		res.err <- err
 		return
@@ -164,4 +165,24 @@ func crawl(url string, depth int, wg *sync.WaitGroup, cache *urlCache, res *resu
 		wg.Add(1)
 		go crawl(url, depth-1, wg, cache, res)
 	}
+}
+
+func makeRequest(url string) (r *http.Response, err error) {
+	// TODO: use customized http.Client
+
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func parseBody(r io.Reader) (*html.Node, error) {
+	node, err := html.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
 }
