@@ -1,6 +1,9 @@
 package crawler
 
+// TODO: write comments to exported func
+
 import (
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -38,6 +41,70 @@ func newResults() *results {
 		data: make(chan string, 1),
 		err:  make(chan error, 1),
 	}
+}
+
+func (r *results) Read() {
+	for {
+		select {
+		case data, open := <-r.data:
+			if !open {
+				return
+			}
+			fmt.Println("[data]\t", data)
+		case err := <-r.err:
+			fmt.Println("[error]\t", err)
+		}
+	}
+}
+
+func (r *results) WriteToSlice(s *[]string) {
+	for {
+		select {
+		case data, open := <-r.data:
+			if !open {
+				return
+			}
+			*s = append(*s, data)
+		case err := <-r.err:
+			fmt.Println("[error]\t", err)
+		}
+	}
+}
+
+type crawlMode int
+
+const (
+	// ReadResults ...
+	ReadResults crawlMode = iota
+	// WriteResultsToSlice ...
+	WriteResultsToSlice
+)
+
+// Crawl ...
+func Crawl(url string, depth int, mode crawlMode) []string {
+	wg := &sync.WaitGroup{}
+	output := &[]string{}
+	visited := newURLCache()
+	results := newResults()
+
+	go func() {
+		wg.Add(1)
+		go crawl(url, depth, wg, visited, results)
+		wg.Wait()
+
+		close(results.data)
+	}()
+
+	switch mode {
+	case ReadResults:
+		results.Read()
+	case WriteResultsToSlice:
+		results.WriteToSlice(output)
+	}
+
+	close(results.err)
+
+	return *output
 }
 
 func grablUrls(resp *http.Response, node *html.Node) []string {
