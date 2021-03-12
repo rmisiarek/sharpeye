@@ -2,11 +2,11 @@ package crawler
 
 import (
 	"bytes"
-	"errors"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,10 +15,12 @@ import (
 func TestUrlCache(t *testing.T) {
 	cache := newURLCache()
 
+	// First use - there is no 'test' in cache, so true is returned
 	_key := "test"
 	exist := cache.Set(_key)
 	assert.Equal(t, true, exist)
 
+	// Second use - now 'test' exist in cache, so false is returned
 	exist = cache.Set(_key)
 	assert.Equal(t, false, exist)
 }
@@ -27,77 +29,88 @@ func TestCrawl(t *testing.T) {
 	s := newMockServer("/crawl", baseBody)
 	defer s.Close()
 
+	// Crawler initialization
+	c := NewCrawler()
+
+	// Simple custom function to read results
+	result := []string{}
+	resultDataF := func(data string) {
+		result = append(result, data)
+	}
+
+	// Simple custom function to test error
+	errors := []error{}
+	resultErrorF := func(err error) {
+		errors = append(errors, err)
+	}
+
+	// Simple custom function to test error
+	filterURL := func(url *string) (bool, string) {
+		if strings.Contains(*url, "example") {
+			return true, *url
+		}
+		return false, ""
+	}
+
+	// Set custom functions
+	c.SetResultData(resultDataF)
+	c.SetResultError(resultErrorF)
+
 	// Success scenario
+	// result[0] is a s.URL -> because of that below I assume there will be 3 items in results
+	c.Crawl(s.URL+"/crawl", 2)
+	assert.Equal(t, 3, len(result))
+	assert.Equal(t, true, isInSlice(result, "https://www.example.com"))
+	assert.Equal(t, true, isInSlice(result, "https://www.test.com"))
 
-	url := s.URL + "/crawl"
-	got := Crawl(url, 1, WriteResultsToSlice)
-	assert.Equal(t, 1, len(got))
+	// Set custom filter function
+	// Now only one URL should be found - www.example.com
+	result = []string{}
+	c.SetFilterURL(filterURL)
+	c.Crawl(s.URL+"/crawl", 2)
+	assert.Equal(t, 1, len(result))
+	assert.Equal(t, true, isInSlice(result, "https://www.example.com"))
+	assert.Equal(t, false, isInSlice(result, "https://www.test.com"))
 
-	got = Crawl(url, 1, ReadResults)
-	assert.Equal(t, []string{}, got)
+	// Failure scenario - unsupported protocol scheme ""
+	c.Crawl("", 1)
+	assert.Equal(t, 1, len(errors))
+	assert.NotNil(t, errors[0])
 
 	// Catch loggers output
-
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 	defer func() {
 		log.SetOutput(os.Stdout)
 	}()
 
-	// Failure scenario - unsupported protocol scheme ""
+	// Test default defaultResultData
+	c = NewCrawler()
+	c.Crawl(s.URL+"/crawl", 2)
+	assert.Contains(t, buf.String(), "www.example.com")
+	assert.Contains(t, buf.String(), "www.test.com")
 
-	got = Crawl("", 1, WriteResultsToSlice)
-	assert.Equal(t, 0, len(got))
+	// Test default defaultResultError - unsupported protocol scheme ""
+	c.Crawl("", 1)
 	assert.Contains(t, buf.String(), "unsupported protocol scheme")
-	assert.Contains(t, buf.String(), "[error]")
-
-	got = Crawl("", 1, ReadResults)
-	assert.Equal(t, []string{}, got)
-	assert.Contains(t, buf.String(), "unsupported protocol scheme")
-	assert.Contains(t, buf.String(), "[error]")
 }
 
-func TestMakeRequest(t *testing.T) {
-	s := newMockServer("/make-request", baseBody)
-	defer s.Close()
-
-	// Success scenario
-
-	url := s.URL + "/make-request"
-	resp, err := makeRequest(url)
-	assert.Equal(t, http.StatusOK, resp.StatusCode)
-	assert.Nil(t, err)
-
-	// Failure scenario - 404 http error
-
-	url = s.URL + "/not-found-404"
-	resp, err = makeRequest(url)
-	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
-	assert.Nil(t, err)
-
-	// Failure scenario - unsupported protocol scheme ""
-
-	url = "very-bad-url-to-raise-error-in-GET"
-	resp, err = makeRequest(url)
-	assert.Nil(t, resp)
-	assert.NotNil(t, err)
-}
-
-func TestParseBodyFail(t *testing.T) {
-	// Only failure test here just because success scenario
-	// is fully tested in TestMakeRequest
-
-	dummyError := &ErrReader{errors.New("just dummy error")}
-
-	_, err := parseBody(dummyError)
-	assert.NotNil(t, err)
-}
-
-type ErrReader struct{ Error error }
-
-func (e *ErrReader) Read([]byte) (int, error) {
-	return 0, e.Error
-}
+var simpleResponseBody = []byte(`
+	<!doctype html>
+	<html>
+	<head>
+		<title>Example Domain</title>
+	</head>
+	<body>
+	<div>
+		<h1>Example Domain</h1>
+		<p><a href="https://www.example.com">This URL should be found</a></p>
+		<p><a href="https://www.test.com">This should not be found if filtered is OK</a></p>
+		<p><a not-href="https://www.not-valid-href.com">It's not a valid 'a href'</a></p>
+	</div>
+	</body>
+	</html>
+`)
 
 func newMockServer(p string, h func(http.ResponseWriter, *http.Request)) *httptest.Server {
 	handler := http.NewServeMux()
@@ -109,21 +122,14 @@ func newMockServer(p string, h func(http.ResponseWriter, *http.Request)) *httpte
 }
 
 func baseBody(w http.ResponseWriter, r *http.Request) {
-	b := []byte(`
-		<!doctype html>
-		<html>
-		<head>
-			<title>Example Domain</title>   
-		</head>
-		<body>
-		<div>
-			<h1>Example Domain</h1>
-			<p><a href="https://www.example.com">Example 1</a></p>
-			<p><a not-href="https://www.example.com">Example 1</a></p>
-		</div>
-		</body>
-		</html>
-	`)
+	_, _ = w.Write([]byte(simpleResponseBody))
+}
 
-	_, _ = w.Write(b)
+func isInSlice(s []string, v string) bool {
+	for _, a := range s {
+		if a == v {
+			return true
+		}
+	}
+	return false
 }
