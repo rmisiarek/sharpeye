@@ -56,9 +56,6 @@ func NewCrawler() *Crawler {
 		filterURL:    defaultFilterURL,
 		resultDataF:  defaultResultData,
 		resultErrorF: defaultResultError,
-		wg:           &sync.WaitGroup{},
-		resultData:   make(chan string, 1),
-		resultErr:    make(chan error, 1),
 	}
 }
 
@@ -99,6 +96,10 @@ func (c *Crawler) ReadResult() {
 func (c *Crawler) Crawl(url string, depth int) []string {
 	output := &[]string{}
 	visited := newURLCache()
+
+	c.resultData = make(chan string, 1)
+	c.resultErr = make(chan error, 1)
+	c.wg = &sync.WaitGroup{}
 
 	go func() {
 		c.wg.Add(1)
