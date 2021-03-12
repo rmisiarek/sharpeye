@@ -207,5 +207,5 @@ func defaultResultData(data string) {
 }
 
 func defaultResultError(err error) {
-	log.Fatalln(err)
+	log.Println(err)
 }
