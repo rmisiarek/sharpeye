@@ -32,80 +32,120 @@ func newURLCache() *urlCache {
 	}
 }
 
-type results struct {
-	data chan string
-	err  chan error
+type filterURL func(url *string) (bool, string)
+
+type resultData func(data string)
+
+type resultError func(err error)
+
+// Crawler ...
+type Crawler struct {
+	URL          string
+	Depth        int
+	filterURL    filterURL
+	resultDataF  resultData
+	resultErrorF resultError
+	wg           *sync.WaitGroup
+	resultData   chan string
+	resultErr    chan error
 }
 
-func newResults() *results {
-	return &results{
-		data: make(chan string, 1),
-		err:  make(chan error, 1),
+// NewCrawler ...
+func NewCrawler() *Crawler {
+	return &Crawler{
+		filterURL:    defaultFilterURL,
+		resultDataF:  defaultResultData,
+		resultErrorF: defaultResultError,
+		wg:           &sync.WaitGroup{},
+		resultData:   make(chan string, 1),
+		resultErr:    make(chan error, 1),
 	}
 }
 
-func (r *results) Read() {
+// SetFilterURL ...
+func (c *Crawler) SetFilterURL(f filterURL) *Crawler {
+	c.filterURL = f
+	return c
+}
+
+// SetResultData ...
+func (c *Crawler) SetResultData(f resultData) *Crawler {
+	c.resultDataF = f
+	return c
+}
+
+// SetResultError ...
+func (c *Crawler) SetResultError(f resultError) *Crawler {
+	c.resultErrorF = f
+	return c
+}
+
+// ReadResult ...
+func (c *Crawler) ReadResult() {
 	for {
 		select {
-		case data, open := <-r.data:
+		case data, open := <-c.resultData:
 			if !open {
 				return
 			}
-			log.Println("[data]\t", data)
-		case err := <-r.err:
-			log.Println("[error]\t", err)
+			c.resultDataF(data)
+		case err := <-c.resultErr:
+			c.resultErrorF(err)
 		}
 	}
 }
-
-func (r *results) WriteToSlice(s *[]string) {
-	for {
-		select {
-		case data, open := <-r.data:
-			if !open {
-				return
-			}
-			*s = append(*s, data)
-		case err := <-r.err:
-			log.Println("[error] ", err)
-		}
-	}
-}
-
-type crawlMode int
-
-const (
-	// ReadResults ...
-	ReadResults crawlMode = iota
-	// WriteResultsToSlice ...
-	WriteResultsToSlice
-)
 
 // Crawl ...
-func Crawl(url string, depth int, mode crawlMode) []string {
-	wg := &sync.WaitGroup{}
+func (c *Crawler) Crawl(url string, depth int) []string {
 	output := &[]string{}
 	visited := newURLCache()
-	results := newResults()
 
 	go func() {
-		wg.Add(1)
-		go crawl(url, depth, wg, visited, results)
-		wg.Wait()
+		c.wg.Add(1)
+		go c.crawl(url, depth, visited)
+		c.wg.Wait()
 
-		close(results.data)
+		close(c.resultData)
 	}()
 
-	switch mode {
-	case ReadResults:
-		results.Read()
-	case WriteResultsToSlice:
-		results.WriteToSlice(output)
-	}
-
-	close(results.err)
+	c.ReadResult()
+	close(c.resultErr)
 
 	return *output
+}
+
+func (c *Crawler) crawl(url string, depth int, cache *urlCache) {
+
+	defer c.wg.Done()
+
+	if depth == 0 || !cache.Set(url) {
+		return
+	}
+
+	response, err := makeRequest(url)
+	if err != nil {
+		c.resultErr <- err
+		return
+	}
+	defer response.Body.Close()
+
+	node, err := parseBody(response.Body)
+	if err != nil {
+		c.resultErr <- err
+		return
+	}
+
+	urls := grablUrls(response, node)
+
+	ok, filteredURL := c.filterURL(&url)
+	if ok {
+		c.resultData <- filteredURL
+	}
+
+	for _, url := range urls {
+		c.wg.Add(1)
+		go c.crawl(url, depth-1, cache)
+	}
 }
 
 func grablUrls(resp *http.Response, node *html.Node) []string {
@@ -137,36 +177,6 @@ func grablUrls(resp *http.Response, node *html.Node) []string {
 	return res
 }
 
-func crawl(url string, depth int, wg *sync.WaitGroup, cache *urlCache, res *results) {
-	defer wg.Done()
-
-	if depth == 0 || !cache.Set(url) {
-		return
-	}
-
-	response, err := makeRequest(url)
-	if err != nil {
-		res.err <- err
-		return
-	}
-	defer response.Body.Close()
-
-	node, err := parseBody(response.Body)
-	if err != nil {
-		res.err <- err
-		return
-	}
-
-	urls := grablUrls(response, node)
-
-	res.data <- url
-
-	for _, url := range urls {
-		wg.Add(1)
-		go crawl(url, depth-1, wg, cache, res)
-	}
-}
-
 func makeRequest(url string) (r *http.Response, err error) {
 	// TODO: use customized http.Client
 
@@ -185,4 +195,16 @@ func parseBody(r io.Reader) (*html.Node, error) {
 	}
 
 	return node, nil
+}
+
+func defaultFilterURL(url *string) (bool, string) {
+	return true, *url
+}
+
+func defaultResultData(data string) {
+	log.Println(data)
+}
+
+func defaultResultError(err error) {
+	log.Fatalln(err)
 }
