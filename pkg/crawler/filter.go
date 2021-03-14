@@ -61,10 +61,10 @@ func prepareStrictHost(host string) (*[]string, error) {
 	}
 
 	t := []string{
-		fmt.Sprintf("http://www.%s/", host),
-		fmt.Sprintf("http://%s/", host),
-		fmt.Sprintf("https://www.%s/", host),
-		fmt.Sprintf("https://%s/", host),
+		fmt.Sprintf("http://www.%s", host),
+		fmt.Sprintf("http://%s", host),
+		fmt.Sprintf("https://www.%s", host),
+		fmt.Sprintf("https://%s", host),
 	}
 
 	return &t, nil
