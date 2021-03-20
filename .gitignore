@@ -19,3 +19,5 @@ bin/
 
 go.mod
 go.sum
+
+debug.txt
