@@ -6,7 +6,9 @@ import (
 	"strings"
 )
 
-// PrepareStrictHostFilterFunc ...
+// PrepareStrictHostFilterFunc return filter function which will return
+// only URL's that are started with URL supplied as 'url' parameter.
+// See tests for usage case.
 func PrepareStrictHostFilterFunc(url string) (func(url *string) (bool, string), error) {
 	hosts, err := prepareStrictHost(url)
 	if err != nil {
@@ -20,7 +22,9 @@ func PrepareStrictHostFilterFunc(url string) (func(url *string) (bool, string), 
 	return f, nil
 }
 
-// PrepareHostFilterFunc ...
+// PrepareHostFilterFunc return filter function which will return
+// only URL's that contains URL supplied as 'url' parameter.
+// See tests for usage case.
 func PrepareHostFilterFunc(url string) (func(url *string) (bool, string), error) {
 	host, err := prepareHost(url)
 	if err != nil {

@@ -1,7 +1,5 @@
 package crawler
 
-// TODO: write comments to exported funcs
-
 import (
 	"io"
 	"log"
@@ -38,7 +36,9 @@ type resultData func(data string)
 
 type resultError func(err error)
 
-// Crawler ...
+// Crawler it's a main package struct which hold user filter functions
+// and all necessary fields for recursive crawling.
+// One should use NewCrawler constructor to get one.
 type Crawler struct {
 	URL          string
 	Depth        int
@@ -50,7 +50,9 @@ type Crawler struct {
 	resultErr    chan error
 }
 
-// NewCrawler ...
+// NewCrawler it's a constructor for Crawler structure.
+// It returns instance with default functions
+// which can be changed with usage of Set* methods.
 func NewCrawler() *Crawler {
 	return &Crawler{
 		filterURL:    defaultFilterURL,
@@ -59,40 +61,30 @@ func NewCrawler() *Crawler {
 	}
 }
 
-// SetFilterURL ...
+// SetFilterURL enables to set custom function for URL filtering.
 func (c *Crawler) SetFilterURL(f filterURL) *Crawler {
 	c.filterURL = f
 	return c
 }
 
-// SetResultData ...
+// SetResultData enables to set custom function for managing
+// data returned by main Crawler function.
 func (c *Crawler) SetResultData(f resultData) *Crawler {
 	c.resultDataF = f
 	return c
 }
 
-// SetResultError ...
+// SetResultError enables to set custom function for managing
+// errors returned by main Crawler function.
 func (c *Crawler) SetResultError(f resultError) *Crawler {
 	c.resultErrorF = f
 	return c
 }
 
-// ReadResult ...
-func (c *Crawler) ReadResult() {
-	for {
-		select {
-		case data, open := <-c.resultData:
-			if !open {
-				return
-			}
-			c.resultDataF(data)
-		case err := <-c.resultErr:
-			c.resultErrorF(err)
-		}
-	}
-}
-
-// Crawl ...
+// Crawl it's a main Crawler function which will start crawling process.
+// Parameters:
+//		url: URL for crawling
+//		depth: after exceeding the action will be stopped
 func (c *Crawler) Crawl(url string, depth int) []string {
 	output := &[]string{}
 	visited := newURLCache()
@@ -109,10 +101,24 @@ func (c *Crawler) Crawl(url string, depth int) []string {
 		close(c.resultData)
 	}()
 
-	c.ReadResult()
+	c.readResult()
 	close(c.resultErr)
 
 	return *output
+}
+
+func (c *Crawler) readResult() {
+	for {
+		select {
+		case data, open := <-c.resultData:
+			if !open {
+				return
+			}
+			c.resultDataF(data)
+		case err := <-c.resultErr:
+			c.resultErrorF(err)
+		}
+	}
 }
 
 func (c *Crawler) crawl(url string, depth int, cache *urlCache) {
