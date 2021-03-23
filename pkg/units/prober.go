@@ -2,6 +2,7 @@ package units
 
 import (
 	"net/http"
+	"time"
 )
 
 // TODO: should consider to use https://github.com/valyala/fasthttp
@@ -85,10 +86,11 @@ func NewHTTPClient() *http.Client {
 	// 	return http.ErrUseLastResponse
 	// }
 
+	timeout := time.Second * 5
 	client := &http.Client{
 		// Transport: transport,
 		// CheckRedirect: re,
-		// Timeout:       timeout,
+		Timeout: timeout,
 	}
 
 	return client
