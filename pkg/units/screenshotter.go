@@ -8,16 +8,40 @@ import (
 	"time"
 )
 
-// TODO: read from config or just try to find it
-var chromePath = "/usr/bin/google-chrome-stable"
+// Screenshotter holds base data to take screenshot by Chrome headless API.
+// ChromePath - path to Chrome executable.
+// UserDataPath - path to directory where Chrome data will be stored.
+// ScreenshotPath - path to directory where screenshots will be stored.
+// Timeout - duration for timeout.
+type Screenshotter struct {
+	ChromePath     string
+	UserDataPath   string
+	ScreenshotPath string
+	Timeout        time.Duration
+}
+
+// NewScreenshotter it's a constructor for Screenshotter base struct.
+// See Screenshotter struct for parameters description.
+func NewScreenshotter(
+	chromePath, userDataPath, screenshotPath string, timeout time.Duration,
+) *Screenshotter {
+
+	return &Screenshotter{
+		ChromePath:     chromePath,
+		UserDataPath:   userDataPath,
+		ScreenshotPath: screenshotPath,
+		Timeout:        timeout,
+	}
+}
 
 // TakeScreenshot takes a screenshot of the website given as a parameter.
 // It returns string with path to saved screenshot if succeed or empty
 // string when it fails.
-func TakeScreenshot(url string, id int) (string, error) {
-	screenshotFilePath := screenshotFilePath(id)
+func (s *Screenshotter) TakeScreenshot(url string, id int) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(s.Timeout))
+	defer cancel()
 
-	var chromeOpts = []string{
+	opts := []string{
 		"--headless",
 		"--no-sandbox", // docker
 		"--disable-gpu",
@@ -29,20 +53,18 @@ func TakeScreenshot(url string, id int) (string, error) {
 		"--disable-crash-reporter",
 		"--ignore-certificate-errors",
 		"--no-default-browser-check",
-		"--user-data-dir=screens3", // TODO: change it
 		"--disable-infobars",
 		"--disable-sync",
-		// "--user-agent=",
 		"--window-size=1280,960",
-		"--screenshot=" + screenshotFilePath,
+		"--user-data-dir=" + s.UserDataPath,
+		// "--user-agent=", // TODO: verify it needed or useful
 	}
 
-	chromeOpts = append(chromeOpts, url)
+	imagePath := s.ScreenshotPath + "/image_" + fmt.Sprint(id) + ".png"
+	opts = append(opts, "--screenshot="+imagePath)
+	opts = append(opts, url)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(30*time.Second))
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, chromePath, chromeOpts...)
+	cmd := exec.CommandContext(ctx, s.ChromePath, opts...)
 	if err := cmd.Start(); err != nil {
 		killCmd(cmd)
 		return "", errors.New("in cmd.Start()")
@@ -58,14 +80,12 @@ func TakeScreenshot(url string, id int) (string, error) {
 	}
 
 	killCmd(cmd)
-	return screenshotFilePath, nil
+	return imagePath, nil
 }
 
 func killCmd(cmd *exec.Cmd) {
-	cmd.Process.Release()
-	cmd.Process.Kill()
-}
-
-func screenshotFilePath(id int) string {
-	return "screens3/image_" + fmt.Sprint(id) + ".png"
+	if cmd.Path != "" {
+		cmd.Process.Release()
+		cmd.Process.Kill()
+	}
 }
