@@ -86,7 +86,7 @@ func NewHTTPClient() *http.Client {
 	// 	return http.ErrUseLastResponse
 	// }
 
-	timeout := time.Second * 5
+	timeout := time.Second * 30
 	client := &http.Client{
 		// Transport: transport,
 		// CheckRedirect: re,

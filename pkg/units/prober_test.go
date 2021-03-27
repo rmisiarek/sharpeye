@@ -12,7 +12,7 @@ import (
 
 func TestNewHTTPClient(t *testing.T) {
 	client := NewHTTPClient()
-	assert.Equal(t, time.Second*5, client.Timeout)
+	assert.Equal(t, time.Second*30, client.Timeout)
 }
 
 func TestProbeHostWithTLS(t *testing.T) {
