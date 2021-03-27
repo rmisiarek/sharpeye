@@ -21,3 +21,4 @@ go.mod
 go.sum
 
 debug.txt
+debug/
