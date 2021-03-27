@@ -17,16 +17,36 @@ var (
 	white  = "\033[97m"
 )
 
-func Green(txt string) string {
-	return fmt.Sprintf("%v%v%v", green, txt, reset)
-}
-
 func Red(txt string) string {
 	return fmt.Sprintf("%v%v%v", red, txt, reset)
 }
 
+func Green(txt string) string {
+	return fmt.Sprintf("%v%v%v", green, txt, reset)
+}
+
+func Yellow(txt string) string {
+	return fmt.Sprintf("%v%v%v", yellow, txt, reset)
+}
+
+func Blue(txt string) string {
+	return fmt.Sprintf("%v%v%v", blue, txt, reset)
+}
+
+func Purple(txt string) string {
+	return fmt.Sprintf("%v%v%v", purple, txt, reset)
+}
+
+func Cyan(txt string) string {
+	return fmt.Sprintf("%v%v%v", cyan, txt, reset)
+}
+
 func Gray(txt string) string {
 	return fmt.Sprintf("%v%v%v", gray, txt, reset)
+}
+
+func White(txt string) string {
+	return fmt.Sprintf("%v%v%v", white, txt, reset)
 }
 
 func init() {
