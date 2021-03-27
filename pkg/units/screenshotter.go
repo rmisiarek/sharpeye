@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"time"
 )
@@ -34,11 +35,13 @@ func NewScreenshotter(
 	}
 }
 
+// TODO: make sure ScreenshotPath dir is created before use TakeScreenshot
+
 // TakeScreenshot takes a screenshot of the website given as a parameter.
 // It returns string with path to saved screenshot if succeed or empty
 // string when it fails.
 func (s *Screenshotter) TakeScreenshot(url string, id int) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(s.Timeout))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(s.Timeout*time.Second))
 	defer cancel()
 
 	opts := []string{
@@ -66,6 +69,7 @@ func (s *Screenshotter) TakeScreenshot(url string, id int) (string, error) {
 
 	cmd := exec.CommandContext(ctx, s.ChromePath, opts...)
 	if err := cmd.Start(); err != nil {
+		log.Fatalln(err)
 		killCmd(cmd)
 		return "", errors.New("in cmd.Start()")
 	}
