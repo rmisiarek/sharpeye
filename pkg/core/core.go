@@ -25,7 +25,10 @@ var (
 func init() {
 	client = units.NewHTTPClient()
 	screenshotter = units.NewScreenshotter(
-		"/usr/bin/google-chrome-stable", "./user-data", "./screens", 15,
+		"/usr/bin/google-chrome-stable",
+		"/home/raf/go/src/sharpeye/debug/user-data",
+		"/home/raf/go/src/sharpeye/debug/screens",
+		15,
 	)
 	session = db.InitDB()
 }
