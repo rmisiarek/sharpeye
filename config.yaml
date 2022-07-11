@@ -1,0 +1,17 @@
+probe:
+  client:
+    redirect: false
+    timeout: 5
+  protocol:
+    - https
+    - http
+  method:
+    - GET
+    - TRACE
+bypass:
+  - name: headers
+    payloads:
+    - payload: a
+      value: bbb
+    - payload: c
+      value: ddd
