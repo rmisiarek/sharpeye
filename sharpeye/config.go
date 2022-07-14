@@ -1,22 +1,18 @@
 package sharpeye
 
 import (
-	"fmt"
 	"io/ioutil"
-	"log"
-	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 )
 
-var defaultConfig string = "config.yaml"
-
-type options struct {
-	source string
-	config string
+type SharpeyeOptions struct {
+	SourcePath string
+	ConfigPath string
+	Config     sharpeyeConfig
 }
 
-type SharpeyeConfig struct {
+type sharpeyeConfig struct {
 	Probe struct {
 		Client struct {
 			Redirect bool `yaml:"redirect"`
@@ -34,23 +30,16 @@ type SharpeyeConfig struct {
 	} `yaml:"bypass"`
 }
 
-func ReadConfig() {
-	dir, err := filepath.Abs(filepath.Dir("./"))
+func (o SharpeyeOptions) loadConfig() error {
+	yfile, err := ioutil.ReadFile(o.ConfigPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	yfile, err := ioutil.ReadFile(dir + "/" + defaultConfig)
+	err = yaml.Unmarshal(yfile, &o.Config)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	var data SharpeyeConfig
-
-	err = yaml.Unmarshal(yfile, &data)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("config: %v \n", data)
+	return nil
 }

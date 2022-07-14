@@ -26,24 +26,30 @@ type communication struct {
 }
 
 type sharpeye struct {
-	client *HttpClient
-	communication
-	options
+	client  *HttpClient
+	comm    communication
+	options SharpeyeOptions
 }
 
-func NewSharpeye() (sharpeye, error) {
+func NewSharpeye(options SharpeyeOptions) (sharpeye, error) {
+	err := options.loadConfig()
+	if err != nil {
+		panic(err)
+	}
+
 	return sharpeye{
-		client: newHttpClient(false, 30),
-		communication: communication{
+		client: newHttpClient(
+			options.Config.Probe.Client.Redirect,
+			options.Config.Probe.Client.Timeout,
+		),
+		comm: communication{
 			feedProbeCh:  make(chan target),
 			feedBypassCh: make(chan target),
 			resultCh:     make(chan result),
 			done:         make(chan interface{}),
 			wg:           sync.WaitGroup{},
 		},
-		options: options{
-			source: "",
-		},
+		options: options,
 	}, nil
 }
 
@@ -55,18 +61,18 @@ func (s *sharpeye) startLoop() <-chan interface{} {
 
 		for {
 			select {
-			case target := <-s.feedProbeCh:
+			case target := <-s.comm.feedProbeCh:
 				s.probe(target)
-			case target := <-s.feedBypassCh:
+			case target := <-s.comm.feedBypassCh:
 				s.bypass(target)
-			case result := <-s.resultCh:
+			case result := <-s.comm.resultCh:
 				switch result.t {
 				case probeType:
 					processProbeResult(result)
 				case bypassType:
 					processBypassResult(result)
 				}
-			case <-s.done:
+			case <-s.comm.done:
 				fmt.Println("done!")
 				return
 			}
@@ -81,8 +87,8 @@ func (s *sharpeye) Start() {
 	ended := s.startLoop()
 
 	go func() {
-		s.wg.Wait()
-		close(s.done)
+		s.comm.wg.Wait()
+		close(s.comm.done)
 	}()
 
 	<-ended
