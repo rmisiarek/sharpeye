@@ -6,13 +6,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type SharpeyeOptions struct {
+type Options struct {
 	SourcePath string
 	ConfigPath string
-	Config     sharpeyeConfig
 }
 
-type sharpeyeConfig struct {
+type config struct {
 	Probe struct {
 		Client struct {
 			Redirect bool `yaml:"redirect"`
@@ -30,16 +29,17 @@ type sharpeyeConfig struct {
 	} `yaml:"bypass"`
 }
 
-func (o SharpeyeOptions) loadConfig() error {
+func (o Options) loadConfig() (config, error) {
 	yfile, err := ioutil.ReadFile(o.ConfigPath)
 	if err != nil {
-		return err
+		return config{}, err
 	}
 
-	err = yaml.Unmarshal(yfile, &o.Config)
+	var cfg config
+	err = yaml.Unmarshal(yfile, &cfg)
 	if err != nil {
-		return err
+		return config{}, err
 	}
 
-	return nil
+	return cfg, nil
 }

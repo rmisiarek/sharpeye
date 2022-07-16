@@ -17,7 +17,7 @@ type target struct {
 }
 
 func (s *sharpeye) feed() {
-	source, err := readFileOrStdin(s.options.source)
+	source, err := readFileOrStdin(s.options.SourcePath)
 	if err != nil {
 		panic(err)
 	}
@@ -26,13 +26,12 @@ func (s *sharpeye) feed() {
 
 	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
-		for _, method := range HTTPMethods {
-			s.wg.Add(1)
-			m := method
-			go func(url string) {
-				defer s.wg.Done()
-				s.feedProbeCh <- target{url: url, method: m}
-			}(scanner.Text())
+		for _, method := range s.config.Probe.Method {
+			s.comm.wg.Add(1)
+			go func(url, method string) {
+				defer s.comm.wg.Done()
+				s.comm.feedProbeCh <- target{url: url, method: method}
+			}(scanner.Text(), method)
 		}
 	}
 }

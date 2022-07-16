@@ -18,11 +18,11 @@ type response struct {
 	headers    map[string][]string
 }
 
-type HttpClient struct {
+type httpClient struct {
 	client *http.Client
 }
 
-func newHttpClient(followRedirect bool, timeout int) *HttpClient {
+func newHttpClient(followRedirect bool, timeout int) *httpClient {
 	var tlsConfig = &tls.Config{InsecureSkipVerify: true}
 
 	var dialContext = &net.Dialer{
@@ -51,10 +51,10 @@ func newHttpClient(followRedirect bool, timeout int) *HttpClient {
 		}
 	}
 
-	return &HttpClient{client: client}
+	return &httpClient{client: client}
 }
 
-func (h *HttpClient) request(url string, method string, headers http.Header) (response, tlsResponse, error) {
+func (h *httpClient) request(url string, method string, headers http.Header) (response, tlsResponse, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return response{}, tlsResponse{}, err

@@ -26,21 +26,24 @@ type communication struct {
 }
 
 type sharpeye struct {
-	client  *HttpClient
+	client  *httpClient
 	comm    communication
-	options SharpeyeOptions
+	config  config
+	options Options
 }
 
-func NewSharpeye(options SharpeyeOptions) (sharpeye, error) {
-	err := options.loadConfig()
+func NewSharpeye(options Options) (sharpeye, error) {
+	config, err := options.loadConfig()
 	if err != nil {
 		panic(err)
 	}
 
+	fmt.Println(config)
+
 	return sharpeye{
 		client: newHttpClient(
-			options.Config.Probe.Client.Redirect,
-			options.Config.Probe.Client.Timeout,
+			config.Probe.Client.Redirect,
+			config.Probe.Client.Timeout,
 		),
 		comm: communication{
 			feedProbeCh:  make(chan target),
@@ -49,6 +52,7 @@ func NewSharpeye(options SharpeyeOptions) (sharpeye, error) {
 			done:         make(chan interface{}),
 			wg:           sync.WaitGroup{},
 		},
+		config:  config,
 		options: options,
 	}, nil
 }
