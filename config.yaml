@@ -11,7 +11,7 @@ probe:
 bypass:
   - name: headers
     payloads:
-    - payload: a
+    - header: a
       value: bbb
-    - payload: c
+    - header: c
       value: ddd

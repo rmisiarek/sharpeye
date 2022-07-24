@@ -23,8 +23,8 @@ type config struct {
 	Bypass []struct {
 		Name     string `yaml:"name"`
 		Payloads []struct {
-			Payload string `yaml:"payload"`
-			Value   string `yaml:"value"`
+			Header string `yaml:"header"`
+			Value  string `yaml:"value"`
 		} `yaml:"payloads"`
 	} `yaml:"bypass"`
 }
