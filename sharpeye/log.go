@@ -8,15 +8,21 @@ import (
 	"github.com/fatih/color"
 )
 
+type successWriter struct{}
 type infoWriter struct{}
 type debugWriter struct{}
 type errorWriter struct{}
 
 var (
-	infoLogger  *log.Logger = log.New(new(infoWriter), "", 0)
-	debugLogger *log.Logger = log.New(new(debugWriter), "", 0)
-	errorLogger *log.Logger = log.New(new(errorWriter), "", 0)
+	successLogger *log.Logger = log.New(new(successWriter), "", 0)
+	infoLogger    *log.Logger = log.New(new(infoWriter), "", 0)
+	debugLogger   *log.Logger = log.New(new(debugWriter), "", 0)
+	errorLogger   *log.Logger = log.New(new(errorWriter), "", 0)
 )
+
+func (writer successWriter) Write(bytes []byte) (int, error) {
+	return fmt.Printf("%s | %s | %s", time.Now().UTC().Format("15:04:05"), color.GreenString("SUCCESS"), string(bytes))
+}
 
 func (writer infoWriter) Write(bytes []byte) (int, error) {
 	return fmt.Printf("%s | %s | %s", time.Now().UTC().Format("15:04:05"), color.BlueString("INFO"), string(bytes))
@@ -28,6 +34,10 @@ func (writer debugWriter) Write(bytes []byte) (int, error) {
 
 func (writer errorWriter) Write(bytes []byte) (int, error) {
 	return fmt.Printf("%s | %s | %s", time.Now().UTC().Format("15:04:05"), color.RedString("ERROR"), string(bytes))
+}
+
+func Success(format string, v ...any) {
+	successLogger.Printf(format, v...)
 }
 
 func Info(format string, v ...any) {
