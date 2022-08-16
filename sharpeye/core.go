@@ -2,6 +2,7 @@ package sharpeye
 
 import (
 	"fmt"
+	"net/http"
 	"sync"
 )
 
@@ -13,13 +14,14 @@ const (
 )
 
 type result struct {
-	t    resultType
-	resp response
+	t      resultType
+	resp   *http.Response
+	bypass bypass
 }
 
 type communication struct {
 	feedProbeCh  chan target
-	feedBypassCh chan target
+	feedBypassCh chan bypassTarget
 	resultCh     chan result
 	done         chan interface{}
 	wg           sync.WaitGroup
@@ -47,7 +49,7 @@ func NewSharpeye(options Options) (sharpeye, error) {
 		),
 		comm: communication{
 			feedProbeCh:  make(chan target),
-			feedBypassCh: make(chan target),
+			feedBypassCh: make(chan bypassTarget),
 			resultCh:     make(chan result),
 			done:         make(chan interface{}),
 			wg:           sync.WaitGroup{},

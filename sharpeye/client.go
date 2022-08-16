@@ -7,17 +7,6 @@ import (
 	"time"
 )
 
-type tlsResponse struct {
-	version    uint16
-	serverName string
-}
-
-type response struct {
-	statusCode int
-	url        string
-	headers    map[string][]string
-}
-
 type httpClient struct {
 	client *http.Client
 }
@@ -54,10 +43,10 @@ func newHttpClient(followRedirect bool, timeout int) *httpClient {
 	return &httpClient{client: client}
 }
 
-func (h *httpClient) request(url string, method string, headers http.Header) (response, tlsResponse, error) {
+func (h *httpClient) request(url string, method string, headers http.Header) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return response{}, tlsResponse{}, err
+		return nil, err
 	}
 
 	if len(headers) != 0 {
@@ -69,30 +58,9 @@ func (h *httpClient) request(url string, method string, headers http.Header) (re
 
 	resp, err := h.client.Do(req)
 	if err != nil {
-		return response{}, tlsResponse{}, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	var tls tlsResponse
-	if resp.TLS != nil {
-		tls = tlsResponse{
-			version:    resp.TLS.Version,
-			serverName: resp.TLS.ServerName,
-		}
-	}
-
-	return response{
-		statusCode: resp.StatusCode,
-		url:        resp.Request.URL.String(),
-		headers:    resp.Header,
-	}, tls, nil
+	return resp, nil
 }
-
-// func getLocation(locationF func() (*url.URL, error)) string {
-// 	location, err := locationF()
-// 	if location == nil || err != nil {
-// 		return ""
-// 	} else {
-// 		return location.String()
-// 	}
-// }
