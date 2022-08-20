@@ -25,15 +25,15 @@ func (writer successWriter) Write(bytes []byte) (int, error) {
 }
 
 func (writer infoWriter) Write(bytes []byte) (int, error) {
-	return fmt.Printf("%s | %s | %s", time.Now().UTC().Format("15:04:05"), color.BlueString("INFO"), string(bytes))
+	return fmt.Printf("%s | %s    | %s", time.Now().UTC().Format("15:04:05"), color.BlueString("INFO"), string(bytes))
 }
 
 func (writer debugWriter) Write(bytes []byte) (int, error) {
-	return fmt.Printf("%s | %s | %s", time.Now().UTC().Format("15:04:05"), color.YellowString("DEBUG"), string(bytes))
+	return fmt.Printf("%s | %s   | %s", time.Now().UTC().Format("15:04:05"), color.YellowString("DEBUG"), string(bytes))
 }
 
 func (writer errorWriter) Write(bytes []byte) (int, error) {
-	return fmt.Printf("%s | %s | %s", time.Now().UTC().Format("15:04:05"), color.RedString("ERROR"), string(bytes))
+	return fmt.Printf("%s | %s   | %s", time.Now().UTC().Format("15:04:05"), color.RedString("ERROR"), string(bytes))
 }
 
 func Success(format string, v ...any) {

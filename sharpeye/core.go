@@ -40,8 +40,6 @@ func NewSharpeye(options Options) (sharpeye, error) {
 		panic(err)
 	}
 
-	fmt.Println(config)
-
 	return sharpeye{
 		client: newHttpClient(
 			config.Probe.Client.Redirect,
