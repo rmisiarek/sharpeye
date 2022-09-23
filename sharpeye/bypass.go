@@ -99,13 +99,13 @@ func processBypassResult(r result) {
 	}
 
 	if r.bypass.statusCodeDiffer != "" || len(r.bypass.headersReflection) > 0 || len(r.bypass.valuesReflection) > 0 {
-		Success("bypass | %s | %v | %s %s", statusCode, r.resp.Request.Method, color.GreenString("reflection found for"), color.YellowString(r.resp.Request.URL.String()))
-		Success("bypass | %s | %v | \t%s %s", statusCode, r.resp.Request.Method, color.BlueString("successful payload ->"), color.YellowString(r.bypass.headerTried))
-		Success("bypass | %s | %v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("key"), color.YellowString(reflectedHeaders))
-		Success("bypass | %s | %v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("value"), color.YellowString(reflectedValues))
-		Success("bypass | %s | %v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("value in body"), color.YellowString(reflectedBodyValues))
+		Success("bypass | %s | %-5v | %s %s", statusCode, r.resp.Request.Method, color.GreenString("reflection found for"), color.YellowString(r.resp.Request.URL.String()))
+		Success("bypass | %s | %-5v | \t%s %s", statusCode, r.resp.Request.Method, color.BlueString("successful payload ->"), color.YellowString(r.bypass.headerTried))
+		Success("bypass | %s | %-5v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("key"), color.YellowString(reflectedHeaders))
+		Success("bypass | %s | %-5v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("value"), color.YellowString(reflectedValues))
+		Success("bypass | %s | %-5v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("value in body"), color.YellowString(reflectedBodyValues))
 	} else {
-		Info("bypass | %d | %v | %s | %s", r.resp.StatusCode, r.resp.Request.Method, r.bypass.headerTried, r.resp.Request.URL)
+		Info("bypass | %d | %-5v | %-50s | %s", r.resp.StatusCode, r.resp.Request.Method, r.bypass.headerTried, r.resp.Request.URL)
 	}
 }
 
