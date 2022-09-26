@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 )
 
@@ -12,7 +13,7 @@ var HTTPMethods = []string{
 }
 
 type target struct {
-	url    string
+	url    *url.URL
 	method string
 }
 
@@ -26,12 +27,18 @@ func (s *sharpeye) feed() {
 
 	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
+		rawURL := scanner.Text()
+		parsedURL, err := url.Parse(rawURL)
+		if err != nil {
+			Error(err.Error())
+			continue
+		}
 		for _, method := range s.config.Probe.Method {
 			s.comm.wg.Add(1)
-			go func(url, method string) {
+			go func(url *url.URL, method string) {
 				defer s.comm.wg.Done()
-				s.comm.feedProbeCh <- target{url: url, method: method}
-			}(scanner.Text(), method)
+				s.comm.feedProbeCh <- target{url: parsedURL, method: method}
+			}(parsedURL, method)
 		}
 	}
 }
