@@ -28,5 +28,5 @@ func (s *sharpeye) probe(t target) {
 }
 
 func processProbeResult(r result) {
-	Info("probe  | %d | %-5s | %v", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL)
+	Info("probe  | %d | %-6s | %v", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL)
 }

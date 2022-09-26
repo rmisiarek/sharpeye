@@ -20,13 +20,9 @@ type config struct {
 		Protocol []string `yaml:"protocol"`
 		Method   []string `yaml:"method"`
 	} `yaml:"probe"`
-	Bypass []struct {
-		Name     string `yaml:"name"`
-		Payloads []struct {
-			Header string `yaml:"header"`
-			Value  string `yaml:"value"`
-		} `yaml:"payloads"`
-	} `yaml:"bypass"`
+	Headers []struct {
+		Header string `yaml:"header"`
+	} `yaml:"headers"`
 }
 
 func (o Options) loadConfig() (config, error) {

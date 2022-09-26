@@ -26,7 +26,21 @@ type bypassTarget struct {
 }
 
 func (s *sharpeye) bypass(t bypassTarget) {
-	for _, payload := range s.config.Bypass[0].Payloads {
+	for _, payload := range s.config.Headers {
+
+		var header, value string
+		p := strings.Split(strings.TrimSpace(payload.Header), ":")
+
+		switch s := len(p); {
+		case s == 2:
+			header = p[0]
+			value = p[1]
+		case s == 1:
+			header = p[0]
+			value = "127.0.0.1, 0.0.0.0, localhost"
+		default:
+			continue
+		}
 
 		s.comm.wg.Add(1)
 		go func(url, method, header, value string) {
@@ -67,10 +81,7 @@ func (s *sharpeye) bypass(t bypassTarget) {
 				resp:   resp,
 				bypass: b,
 			}
-			// rand.Seed(time.Now().UnixNano())
-			// randomSleep := rand.Intn(800-200) + 200
-			// time.Sleep(time.Duration(randomSleep) * time.Millisecond)
-		}(t.url, t.method, payload.Header, payload.Value)
+		}(t.url, t.method, header, value)
 	}
 }
 
@@ -82,11 +93,7 @@ func processBypassResult(r result) {
 		statusCode = color.GreenString(r.bypass.statusCodeDiffer)
 	}
 
-	var (
-		reflectedHeaders    = "---"
-		reflectedValues     = "---"
-		reflectedBodyValues = "---"
-	)
+	var reflectedHeaders, reflectedValues, reflectedBodyValues string
 
 	if len(r.bypass.headersReflection) > 0 {
 		reflectedHeaders = strings.Join(r.bypass.headersReflection, ",")
@@ -99,13 +106,18 @@ func processBypassResult(r result) {
 	}
 
 	if r.bypass.statusCodeDiffer != "" || len(r.bypass.headersReflection) > 0 || len(r.bypass.valuesReflection) > 0 {
-		Success("bypass | %s | %-5v | %s %s", statusCode, r.resp.Request.Method, color.GreenString("reflection found for"), color.YellowString(r.resp.Request.URL.String()))
-		Success("bypass | %s | %-5v | \t%s %s", statusCode, r.resp.Request.Method, color.BlueString("successful payload ->"), color.YellowString(r.bypass.headerTried))
-		Success("bypass | %s | %-5v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("key"), color.YellowString(reflectedHeaders))
-		Success("bypass | %s | %-5v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("value"), color.YellowString(reflectedValues))
-		Success("bypass | %s | %-5v | \t%s: %s", statusCode, r.resp.Request.Method, color.GreenString("value in body"), color.YellowString(reflectedBodyValues))
+		Success("bypass | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypass.headerTried))
+		if reflectedHeaders != "" {
+			Success("bypass | %s | %-6v | \t>> found reflected header key in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedHeaders))
+		}
+		if reflectedValues != "" {
+			Success("bypass | %s | %-6v | \t>> found reflected header value in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedValues))
+		}
+		if reflectedBodyValues != "" {
+			Success("bypass | %s | %-6v | \t>> found reflected header value in body: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedBodyValues))
+		}
 	} else {
-		Info("bypass | %d | %-5v | %-50s | %s", r.resp.StatusCode, r.resp.Request.Method, r.bypass.headerTried, r.resp.Request.URL)
+		Info("bypass | %d | %-6v | %s ( %s )", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypass.headerTried))
 	}
 }
 
