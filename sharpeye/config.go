@@ -23,6 +23,9 @@ type config struct {
 	Headers []struct {
 		Header string `yaml:"header"`
 	} `yaml:"headers"`
+	Paths []struct {
+		Path string `yaml:"path"`
+	} `yaml:"paths"`
 }
 
 func (o Options) loadConfig() (config, error) {

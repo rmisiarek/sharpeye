@@ -11,7 +11,7 @@ import (
 	"github.com/fatih/color"
 )
 
-type bypass struct {
+type bypassHeader struct {
 	headerTried       string
 	headersReflection []string
 	valuesReflection  []string
@@ -19,13 +19,106 @@ type bypass struct {
 	statusCodeDiffer  string
 }
 
-type bypassTarget struct {
+type bypassPath struct {
+	statusCodeDiffer string
+	pathTried        string
+}
+
+type bypassHeaderTarget struct {
 	headers    map[string][]string // headers from base response
 	statusCode int                 // status code from base response
 	target
 }
 
-func (s *sharpeye) bypass(t bypassTarget) {
+type bypassPathTarget struct {
+	statusCode int // status code from base response
+	target
+}
+
+func (s *sharpeye) bypassPath(t bypassPathTarget) {
+	for _, payload := range s.config.Paths {
+		// will not work with Unicode, trim leading /
+		p := t.target.url.Path[1:]
+
+		path := strings.Replace(payload.Path, "^path^", p, -1)
+		url := fmt.Sprintf("%s://%s%s", t.target.url.Scheme, t.target.url.Host, path)
+
+		s.comm.wg.Add(1)
+		go func(url, method, payload string) {
+			defer s.comm.wg.Done()
+
+			resp, err := s.client.request(url, t.method, http.Header{})
+			if err != nil {
+				return
+			}
+
+			b := bypassPath{pathTried: payload}
+
+			if resp.StatusCode != t.statusCode {
+				b.statusCodeDiffer = fmt.Sprintf("%d -> %d", t.statusCode, resp.StatusCode)
+			}
+
+			s.comm.resultCh <- result{
+				t:          bypassPathType,
+				resp:       resp,
+				bypassPath: b,
+			}
+		}(url, t.target.method, payload.Path)
+	}
+}
+
+func processBypassPathResult(r result) {
+	statusCode := strconv.Itoa(r.resp.StatusCode)
+	if r.bypassPath.statusCodeDiffer != "" {
+		switch s := statusCodeGroup(r.resp.StatusCode); s {
+		case "information":
+			Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
+			Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
+		case "success":
+			Success("path   | %s | %-6v | %s ( %s )", color.GreenString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypassPath.pathTried))
+			Success("path   | %s | %-6v | \t>> got it: %s", color.GreenString(statusCode), r.resp.Request.Method, color.GreenString(r.bypassPath.statusCodeDiffer))
+		case "redirection":
+			if r.resp.StatusCode == http.StatusMovedPermanently || r.resp.StatusCode == http.StatusFound {
+				Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
+			} else {
+				Info("path   | %s | %-6v | %s ( %s )", color.YellowString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
+				Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
+			}
+		case "client_error":
+			if r.resp.StatusCode == http.StatusNotFound || r.resp.StatusCode == http.StatusBadRequest {
+				Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
+			} else {
+				Info("path   | %s | %-6v | %s ( %s )", color.RedString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
+				Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
+			}
+		case "server_error":
+			Info("path   | %s | %-6v | %s ( %s )", color.RedString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
+			Info("path   | %s | %-6v | \t>> may be interesting: %s", color.RedString(statusCode), r.resp.Request.Method, color.RedString(r.bypassPath.statusCodeDiffer))
+		}
+	}
+}
+
+func statusCodeGroup(code int) string {
+	var group string
+	if code >= 100 && code <= 199 {
+		group = "information"
+	}
+	if code >= 200 && code <= 299 {
+		group = "success"
+	}
+	if code >= 300 && code <= 399 {
+		group = "redirection"
+	}
+	if code >= 400 && code <= 499 {
+		group = "client_error"
+	}
+	if code >= 500 && code <= 599 {
+		group = "server_error"
+	}
+	return group
+}
+
+func (s *sharpeye) bypassHeader(t bypassHeaderTarget) {
 	for _, payload := range s.config.Headers {
 
 		var header, value string
@@ -46,12 +139,12 @@ func (s *sharpeye) bypass(t bypassTarget) {
 		go func(url, method, header, value string) {
 			defer s.comm.wg.Done()
 
-			resp, err := s.client.request(t.url, t.method, http.Header{header: []string{value}})
+			resp, err := s.client.request(t.url.String(), t.method, http.Header{header: []string{value}})
 			if err != nil {
 				return
 			}
 
-			b := bypass{
+			b := bypassHeader{
 				headerTried: fmt.Sprintf("%s: %s", header, value),
 			}
 
@@ -77,47 +170,47 @@ func (s *sharpeye) bypass(t bypassTarget) {
 			}
 
 			s.comm.resultCh <- result{
-				t:      bypassType,
-				resp:   resp,
-				bypass: b,
+				t:            bypassHeaderType,
+				resp:         resp,
+				bypassHeader: b,
 			}
-		}(t.url, t.method, header, value)
+		}(t.url.String(), t.method, header, value)
 	}
 }
 
-func processBypassResult(r result) {
+func processBypassHeaderResult(r result) {
 	delete(r.resp.Request.Header, "Connection")
 
 	statusCode := strconv.Itoa(r.resp.StatusCode)
-	if r.bypass.statusCodeDiffer != "" {
-		statusCode = color.GreenString(r.bypass.statusCodeDiffer)
+	if r.bypassHeader.statusCodeDiffer != "" {
+		statusCode = color.GreenString(r.bypassHeader.statusCodeDiffer)
 	}
 
 	var reflectedHeaders, reflectedValues, reflectedBodyValues string
 
-	if len(r.bypass.headersReflection) > 0 {
-		reflectedHeaders = strings.Join(r.bypass.headersReflection, ",")
+	if len(r.bypassHeader.headersReflection) > 0 {
+		reflectedHeaders = strings.Join(r.bypassHeader.headersReflection, ",")
 	}
-	if len(r.bypass.valuesReflection) > 0 {
-		reflectedValues = strings.Join(r.bypass.valuesReflection, ",")
+	if len(r.bypassHeader.valuesReflection) > 0 {
+		reflectedValues = strings.Join(r.bypassHeader.valuesReflection, ",")
 	}
-	if len(r.bypass.bodyReflection) > 0 {
-		reflectedBodyValues = strings.Join(r.bypass.bodyReflection, ",")
+	if len(r.bypassHeader.bodyReflection) > 0 {
+		reflectedBodyValues = strings.Join(r.bypassHeader.bodyReflection, ",")
 	}
 
-	if r.bypass.statusCodeDiffer != "" || len(r.bypass.headersReflection) > 0 || len(r.bypass.valuesReflection) > 0 {
-		Success("bypass | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypass.headerTried))
+	if r.bypassHeader.statusCodeDiffer != "" || len(r.bypassHeader.headersReflection) > 0 || len(r.bypassHeader.valuesReflection) > 0 {
+		Success("header | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypassHeader.headerTried))
 		if reflectedHeaders != "" {
-			Success("bypass | %s | %-6v | \t>> found reflected header key in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedHeaders))
+			Success("header | %s | %-6v | \t>> found reflected header key in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedHeaders))
 		}
 		if reflectedValues != "" {
-			Success("bypass | %s | %-6v | \t>> found reflected header value in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedValues))
+			Success("header | %s | %-6v | \t>> found reflected header value in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedValues))
 		}
 		if reflectedBodyValues != "" {
-			Success("bypass | %s | %-6v | \t>> found reflected header value in body: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedBodyValues))
+			Success("header | %s | %-6v | \t>> found reflected header value in body: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedBodyValues))
 		}
 	} else {
-		Info("bypass | %d | %-6v | %s ( %s )", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypass.headerTried))
+		Info("header | %d | %-6v | %s ( %s )", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassHeader.headerTried))
 	}
 }
 

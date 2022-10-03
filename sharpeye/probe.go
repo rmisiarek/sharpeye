@@ -10,14 +10,24 @@ func (s *sharpeye) probe(t target) {
 	go func() {
 		defer s.comm.wg.Done()
 
-		resp, err := s.client.request(t.url, t.method, http.Header{})
+		resp, err := s.client.request(t.url.String(), t.method, http.Header{})
 		if err != nil {
 			Error(err.Error())
 			return
 		}
 
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-			s.comm.feedBypassCh <- bypassTarget{resp.Header, resp.StatusCode, target{url: t.url, method: t.method}}
+			s.comm.feedBypassHeaderCh <- bypassHeaderTarget{
+				resp.Header, resp.StatusCode, target{url: t.url, method: t.method},
+			}
+
+		}
+
+		// TODO: move to upper block or find 401/403 with path
+		if t.url.Path != "" {
+			s.comm.feedBypassPathCh <- bypassPathTarget{
+				resp.StatusCode, target{url: t.url, method: t.method},
+			}
 		}
 
 		s.comm.resultCh <- result{

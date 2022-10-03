@@ -7,8 +7,23 @@ probe:
     - http
   method:
     - GET
-    - TRACE
-    - DELETE
+    # - TRACE
+    # - DELETE
+paths:
+  - path: /^path^/
+  - path: //^path^//
+  - path: /^path^/.
+  - path: /./^path^/./
+  - path: /./^path^/..
+  - path: /../^path^
+  - path: /;/^path^
+  - path: /.;/^path^
+  - path: //;//^path^
+  - path: /^path^..;/
+  - path: /%2e/^path^
+  - path: /%252e/^path^
+  - path: /%ef%bc%8f^path^
+
 headers:
   - header: X-Originally-Forwarded-For:-1
   - header: X-Originating-IP

@@ -10,21 +10,24 @@ type resultType int
 
 const (
 	probeType resultType = iota
-	bypassType
+	bypassHeaderType
+	bypassPathType
 )
 
 type result struct {
-	t      resultType
-	resp   *http.Response
-	bypass bypass
+	t            resultType
+	resp         *http.Response
+	bypassHeader bypassHeader
+	bypassPath   bypassPath
 }
 
 type communication struct {
-	feedProbeCh  chan target
-	feedBypassCh chan bypassTarget
-	resultCh     chan result
-	done         chan interface{}
-	wg           sync.WaitGroup
+	feedProbeCh        chan target
+	feedBypassHeaderCh chan bypassHeaderTarget
+	feedBypassPathCh   chan bypassPathTarget
+	resultCh           chan result
+	done               chan interface{}
+	wg                 sync.WaitGroup
 }
 
 type sharpeye struct {
@@ -46,11 +49,12 @@ func NewSharpeye(options Options) (sharpeye, error) {
 			config.Probe.Client.Timeout,
 		),
 		comm: communication{
-			feedProbeCh:  make(chan target),
-			feedBypassCh: make(chan bypassTarget),
-			resultCh:     make(chan result),
-			done:         make(chan interface{}),
-			wg:           sync.WaitGroup{},
+			feedProbeCh:        make(chan target),
+			feedBypassHeaderCh: make(chan bypassHeaderTarget),
+			feedBypassPathCh:   make(chan bypassPathTarget),
+			resultCh:           make(chan result),
+			done:               make(chan interface{}),
+			wg:                 sync.WaitGroup{},
 		},
 		config:  config,
 		options: options,
@@ -67,14 +71,18 @@ func (s *sharpeye) startLoop() <-chan interface{} {
 			select {
 			case target := <-s.comm.feedProbeCh:
 				s.probe(target)
-			case target := <-s.comm.feedBypassCh:
-				s.bypass(target)
+			case target := <-s.comm.feedBypassHeaderCh:
+				s.bypassHeader(target)
+			case p := <-s.comm.feedBypassPathCh:
+				s.bypassPath(p)
 			case result := <-s.comm.resultCh:
 				switch result.t {
 				case probeType:
 					processProbeResult(result)
-				case bypassType:
-					processBypassResult(result)
+				case bypassHeaderType:
+					processBypassHeaderResult(result)
+				case bypassPathType:
+					processBypassPathResult(result)
 				}
 			case <-s.comm.done:
 				fmt.Println("done!")
