@@ -6,11 +6,8 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strings"
 )
-
-var HTTPMethods = []string{
-	"GET",
-}
 
 type target struct {
 	url    *url.URL
@@ -27,18 +24,20 @@ func (s *sharpeye) feed() {
 
 	scanner := bufio.NewScanner(source)
 	for scanner.Scan() {
-		rawURL := scanner.Text()
-		parsedURL, err := url.Parse(rawURL)
-		if err != nil {
-			Error(err.Error())
-			continue
-		}
-		for _, method := range s.config.Probe.Method {
-			s.comm.wg.Add(1)
-			go func(url *url.URL, method string) {
-				defer s.comm.wg.Done()
-				s.comm.feedProbeCh <- target{url: parsedURL, method: method}
-			}(parsedURL, method)
+		rawURL := trimScheme(scanner.Text())
+		for _, protocol := range s.config.Probe.Protocol {
+			parsedURL, err := prepareURL(rawURL, protocol)
+			if err != nil {
+				Error(err.Error())
+				continue
+			}
+			for _, method := range s.config.Probe.Method {
+				s.comm.wg.Add(1)
+				go func(url *url.URL, method string) {
+					defer s.comm.wg.Done()
+					s.comm.feedProbeCh <- target{url: parsedURL, method: method}
+				}(parsedURL, method)
+			}
 		}
 	}
 }
@@ -61,4 +60,23 @@ func readFileOrStdin(source string) (io.ReadCloser, error) {
 	}
 
 	return r, nil
+}
+
+// prepareURL takes URL u without scheme and returns URL with s scheme
+func prepareURL(u, s string) (*url.URL, error) {
+	parsedURL, err := url.Parse(s + "://" + u)
+	if err != nil {
+		return nil, err
+	}
+
+	return parsedURL, nil
+}
+
+// trimScheme returns URL without scheme.
+func trimScheme(u string) string {
+	if i := strings.Index(u, "://"); i != -1 {
+		return u[i+len("://"):]
+	}
+
+	return u
 }
