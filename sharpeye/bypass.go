@@ -27,22 +27,19 @@ type bypassPath struct {
 type bypassHeaderTarget struct {
 	headers    map[string][]string // headers from base response
 	statusCode int                 // status code from base response
-	target
+	target                         // target
 }
 
 type bypassPathTarget struct {
 	statusCode int // status code from base response
-	target
+	target         // target
 }
 
 func (s *sharpeye) bypassPath(t bypassPathTarget) {
 	for _, payload := range s.config.Paths {
-		// will not work with Unicode, trim leading /
-		p := t.target.url.Path[1:]
-
-		path := strings.Replace(payload.Path, "^path^", p, -1)
-		url := fmt.Sprintf("%s://%s%s", t.target.url.Scheme, t.target.url.Host, path)
-
+		url := fmt.Sprintf("%s://%s%s%s",
+			t.target.url.Scheme, t.target.url.Host, payload.Path, t.target.url.Path,
+		)
 		s.comm.wg.Add(1)
 		go func(url, method, payload string) {
 			defer s.comm.wg.Done()
@@ -52,7 +49,7 @@ func (s *sharpeye) bypassPath(t bypassPathTarget) {
 				return
 			}
 
-			b := bypassPath{pathTried: payload}
+			b := bypassPath{pathTried: payload, statusCodeDiffer: ""}
 
 			if resp.StatusCode != t.statusCode {
 				b.statusCodeDiffer = fmt.Sprintf("%d -> %d", t.statusCode, resp.StatusCode)
@@ -69,32 +66,31 @@ func (s *sharpeye) bypassPath(t bypassPathTarget) {
 
 func processBypassPathResult(r result) {
 	statusCode := strconv.Itoa(r.resp.StatusCode)
-	if r.bypassPath.statusCodeDiffer != "" {
-		switch s := statusCodeGroup(r.resp.StatusCode); s {
-		case "information":
-			Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
+
+	switch s := statusCodeGroup(r.resp.StatusCode); s {
+	case "information":
+		Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
+		Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
+	case "success":
+		Success("path   | %s | %-6v | %s ( %s )", color.GreenString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypassPath.pathTried))
+		Success("path   | %s | %-6v | \t>> got it: %s", color.GreenString(statusCode), r.resp.Request.Method, color.GreenString(r.bypassPath.statusCodeDiffer))
+	case "redirection":
+		if r.bypassPath.statusCodeDiffer != "" && (r.resp.StatusCode != http.StatusMovedPermanently && r.resp.StatusCode != http.StatusFound) {
+			Info("path   | %s | %-6v | %s ( %s )", color.YellowString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
 			Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
-		case "success":
-			Success("path   | %s | %-6v | %s ( %s )", color.GreenString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypassPath.pathTried))
-			Success("path   | %s | %-6v | \t>> got it: %s", color.GreenString(statusCode), r.resp.Request.Method, color.GreenString(r.bypassPath.statusCodeDiffer))
-		case "redirection":
-			if r.resp.StatusCode == http.StatusMovedPermanently || r.resp.StatusCode == http.StatusFound {
-				Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
-			} else {
-				Info("path   | %s | %-6v | %s ( %s )", color.YellowString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
-				Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
-			}
-		case "client_error":
-			if r.resp.StatusCode == http.StatusNotFound || r.resp.StatusCode == http.StatusBadRequest {
-				Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
-			} else {
-				Info("path   | %s | %-6v | %s ( %s )", color.RedString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
-				Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
-			}
-		case "server_error":
-			Info("path   | %s | %-6v | %s ( %s )", color.RedString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
-			Info("path   | %s | %-6v | \t>> may be interesting: %s", color.RedString(statusCode), r.resp.Request.Method, color.RedString(r.bypassPath.statusCodeDiffer))
+		} else {
+			Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
 		}
+	case "client_error":
+		if r.bypassPath.statusCodeDiffer != "" && (r.resp.StatusCode != http.StatusNotFound && r.resp.StatusCode != http.StatusBadRequest) {
+			Info("path   | %s | %-6v | %s ( %s )", color.YellowString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
+			Info("path   | %s | %-6v | \t>> may be interesting: %s", color.YellowString(statusCode), r.resp.Request.Method, color.YellowString(r.bypassPath.statusCodeDiffer))
+		} else {
+			Info("path   | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassPath.pathTried))
+		}
+	case "server_error":
+		Info("path   | %s | %-6v | %s ( %s )", color.RedString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.BlueString(r.bypassPath.pathTried))
+		Info("path   | %s | %-6v | \t>> may be interesting: %s", color.RedString(statusCode), r.resp.Request.Method, color.RedString(r.bypassPath.statusCodeDiffer))
 	}
 }
 
@@ -115,6 +111,7 @@ func statusCodeGroup(code int) string {
 	if code >= 500 && code <= 599 {
 		group = "server_error"
 	}
+
 	return group
 }
 

@@ -20,13 +20,10 @@ func (s *sharpeye) probe(t target) {
 			s.comm.feedBypassHeaderCh <- bypassHeaderTarget{
 				resp.Header, resp.StatusCode, target{url: t.url, method: t.method},
 			}
-
-		}
-
-		// TODO: move to upper block or find 401/403 with path
-		if t.url.Path != "" {
-			s.comm.feedBypassPathCh <- bypassPathTarget{
-				resp.StatusCode, target{url: t.url, method: t.method},
+			if t.url.Path != "" {
+				s.comm.feedBypassPathCh <- bypassPathTarget{
+					resp.StatusCode, target{url: t.url, method: t.method},
+				}
 			}
 		}
 
