@@ -10,59 +10,61 @@ probe:
     # - TRACE
     # - DELETE
 paths:
-  - path: /^path^/
-  - path: //^path^//
-  - path: /^path^/.
-  - path: /./^path^/./
-  - path: /./^path^/..
-  - path: /../^path^
-  - path: /;/^path^
-  - path: /.;/^path^
-  - path: //;//^path^
-  - path: /^path^..;/
-  - path: /%2e/^path^
-  - path: /%252e/^path^
-  - path: /%ef%bc%8f^path^
+  # - path: /^path^/
+  # - path: //^path^//
+  # - path: /^path^/.
+  # - path: /./^path^/./
+  # - path: /./^path^/..
+  # - path: /../^path^
+  # - path: /;/^path^
+  # - path: /.;/^path^
+  # - path: //;//^path^
+  # - path: /^path^..;/
+  # - path: /%2e/^path^
+  # - path: /%252e/^path^
+  # - path: /%ef%bc%8f^path^
+  - path: /%ef%bc%8f
+
 
 headers:
   - header: X-Originally-Forwarded-For:-1
-  - header: X-Originating-IP
-  - header: True-Client-IP
-  - header: X-WAP-Profile
-  - header: X-WAP-Profile
-  - header: Destination
-  - header: Proxy
-  - header: CF-Connecting_IP
-  - header: CF-Connecting-IP
-  - header: X-Custom-IP-Authorization
-  - header: X-Forwarded-For
-  - header: X-Remote-IP
-  - header: X-Client-IP
-  - header: X-Host
-  - header: X-Forwarded-Host
-  - header: Content-Length
-  - header: X-ProxyUser-Ip
-  - header: Base-Url
-  - header: Client-IP
-  - header: Http-Url
-  - header: Proxy-Host
-  - header: Proxy-Url
-  - header: Real-Ip
-  - header: Redirect
-  - header: Referrer
-  - header: Request-Uri
-  - header: Uri
-  - header: Url
-  - header: X-Forward-For
-  - header: X-Forwarded-By
-  - header: X-Forwarded-For-Original
-  - header: X-Forwarded-Server
-  - header: X-Forwarded
-  - header: X-Forwarder-For
-  - header: X-Http-Destinationurl
-  - header: X-Http-Host-Override
-  - header: X-Original-Remote-Addr
-  - header: X-Proxy-Url
-  - header: X-Real-Ip
-  - header: X-Remote-Addr
-  - header: X-OReferrer
+  # - header: X-Originating-IP
+  # - header: True-Client-IP
+  # - header: X-WAP-Profile
+  # - header: X-WAP-Profile
+  # - header: Destination
+  # - header: Proxy
+  # - header: CF-Connecting_IP
+  # - header: CF-Connecting-IP
+  # - header: X-Custom-IP-Authorization
+  # - header: X-Forwarded-For
+  # - header: X-Remote-IP
+  # - header: X-Client-IP
+  # - header: X-Host
+  # - header: X-Forwarded-Host
+  # - header: Content-Length
+  # - header: X-ProxyUser-Ip
+  # - header: Base-Url
+  # - header: Client-IP
+  # - header: Http-Url
+  # - header: Proxy-Host
+  # - header: Proxy-Url
+  # - header: Real-Ip
+  # - header: Redirect
+  # - header: Referrer
+  # - header: Request-Uri
+  # - header: Uri
+  # - header: Url
+  # - header: X-Forward-For
+  # - header: X-Forwarded-By
+  # - header: X-Forwarded-For-Original
+  # - header: X-Forwarded-Server
+  # - header: X-Forwarded
+  # - header: X-Forwarder-For
+  # - header: X-Http-Destinationurl
+  # - header: X-Http-Host-Override
+  # - header: X-Original-Remote-Addr
+  # - header: X-Proxy-Url
+  # - header: X-Real-Ip
+  # - header: X-Remote-Addr
+  # - header: X-OReferrer

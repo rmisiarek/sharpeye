@@ -35,7 +35,7 @@ func (s *sharpeye) feed() {
 				s.comm.wg.Add(1)
 				go func(url *url.URL, method string) {
 					defer s.comm.wg.Done()
-					s.comm.feedProbeCh <- target{url: parsedURL, method: method}
+					s.probe.input() <- target{url: parsedURL, method: method}
 				}(parsedURL, method)
 			}
 		}

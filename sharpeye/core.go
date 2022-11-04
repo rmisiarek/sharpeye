@@ -22,16 +22,17 @@ type result struct {
 }
 
 type communication struct {
-	feedProbeCh        chan target
+	// feedProbeCh        chan target
 	feedBypassHeaderCh chan bypassHeaderTarget
 	feedBypassPathCh   chan bypassPathTarget
 	resultCh           chan result
-	done               chan interface{}
-	wg                 sync.WaitGroup
+	// done               chan interface{}
+	wg sync.WaitGroup
 }
 
 type sharpeye struct {
 	client  *httpClient
+	probe   prober
 	comm    communication
 	config  config
 	options Options
@@ -42,26 +43,27 @@ func NewSharpeye(options Options) (sharpeye, error) {
 	if err != nil {
 		panic(err)
 	}
-
+	p := NewProbe()
 	return sharpeye{
 		client: newHttpClient(
 			config.Probe.Client.Redirect,
 			config.Probe.Client.Timeout,
 		),
+		probe: p,
 		comm: communication{
-			feedProbeCh:        make(chan target),
+			// feedProbeCh:        make(chan target),
 			feedBypassHeaderCh: make(chan bypassHeaderTarget),
 			feedBypassPathCh:   make(chan bypassPathTarget),
 			resultCh:           make(chan result),
-			done:               make(chan interface{}),
-			wg:                 sync.WaitGroup{},
+			// done:               make(chan interface{}),
+			wg: sync.WaitGroup{},
 		},
 		config:  config,
 		options: options,
 	}, nil
 }
 
-func (s *sharpeye) startLoop() <-chan interface{} {
+func (s *sharpeye) startLoop(done chan interface{}) <-chan interface{} {
 	ended := make(chan interface{})
 
 	go func() {
@@ -69,22 +71,21 @@ func (s *sharpeye) startLoop() <-chan interface{} {
 
 		for {
 			select {
-			case target := <-s.comm.feedProbeCh:
-				s.probe(target)
+			case in := <-s.probe.input():
+				r := s.probe.run(in, &s.comm.wg, s.client, s.comm.feedBypassHeaderCh, s.comm.feedBypassPathCh)
+				s.probe.procesResult(r)
 			case target := <-s.comm.feedBypassHeaderCh:
 				s.bypassHeader(target)
 			case p := <-s.comm.feedBypassPathCh:
 				s.bypassPath(p)
 			case result := <-s.comm.resultCh:
 				switch result.t {
-				case probeType:
-					processProbeResult(result)
 				case bypassHeaderType:
 					processBypassHeaderResult(result)
 				case bypassPathType:
 					processBypassPathResult(result)
 				}
-			case <-s.comm.done:
+			case <-done:
 				fmt.Println("done!")
 				return
 			}
@@ -96,11 +97,12 @@ func (s *sharpeye) startLoop() <-chan interface{} {
 
 func (s *sharpeye) Start() {
 	s.feed()
-	ended := s.startLoop()
+	done := make(chan interface{})
+	ended := s.startLoop(done)
 
 	go func() {
 		s.comm.wg.Wait()
-		close(s.comm.done)
+		close(done)
 	}()
 
 	<-ended
