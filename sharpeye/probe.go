@@ -7,7 +7,7 @@ import (
 
 type prober interface {
 	input() chan target
-	run(target, *sync.WaitGroup, *httpClient, chan<- bypassHeaderTarget, chan<- bypassPathTarget) chan result
+	run(target, *sync.WaitGroup, httper, chan<- bypassHeaderTarget, chan<- bypassPathTarget) chan result
 	procesResult(chan result)
 }
 
@@ -26,7 +26,7 @@ func (s probe) input() chan target {
 }
 
 func (s probe) run(
-	t target, wg *sync.WaitGroup, c *httpClient, bh chan<- bypassHeaderTarget, bp chan<- bypassPathTarget,
+	t target, wg *sync.WaitGroup, h httper, bh chan<- bypassHeaderTarget, bp chan<- bypassPathTarget,
 ) chan result {
 	r := make(chan result, 1)
 
@@ -35,7 +35,7 @@ func (s probe) run(
 		defer wg.Done()
 		defer close(r)
 
-		resp, err := c.request(t.url.String(), t.method, http.Header{})
+		resp, err := h.request(t.url.String(), t.method, http.Header{})
 		if err != nil {
 			Error(err.Error())
 			return

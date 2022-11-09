@@ -31,7 +31,7 @@ type communication struct {
 }
 
 type sharpeye struct {
-	client  *httpClient
+	client  httper
 	probe   prober
 	comm    communication
 	config  config
@@ -45,7 +45,7 @@ func NewSharpeye(options Options) (sharpeye, error) {
 	}
 	p := NewProbe()
 	return sharpeye{
-		client: newHttpClient(
+		client: NewHttpClient(
 			config.Probe.Client.Redirect,
 			config.Probe.Client.Timeout,
 		),

@@ -7,43 +7,15 @@ import (
 	"time"
 )
 
+type httper interface {
+	request(string, string, http.Header) (*http.Response, error)
+}
+
 type httpClient struct {
-	client *http.Client
+	client http.Client
 }
 
-func newHttpClient(followRedirect bool, timeout int) *httpClient {
-	var tlsConfig = &tls.Config{InsecureSkipVerify: true}
-
-	var dialContext = &net.Dialer{
-		Timeout:   time.Second * 5,
-		KeepAlive: time.Second,
-	}
-
-	var transport = &http.Transport{
-		MaxIdleConns:      30,
-		IdleConnTimeout:   time.Second,
-		DisableKeepAlives: true,
-		TLSClientConfig:   tlsConfig,
-		DialContext:       dialContext.DialContext,
-	}
-
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   time.Duration(timeout) * time.Second,
-	}
-
-	if followRedirect {
-		client.CheckRedirect = nil
-	} else {
-		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		}
-	}
-
-	return &httpClient{client: client}
-}
-
-func (h *httpClient) request(url string, method string, headers http.Header) (*http.Response, error) {
+func (h httpClient) request(url string, method string, headers http.Header) (*http.Response, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
@@ -63,4 +35,36 @@ func (h *httpClient) request(url string, method string, headers http.Header) (*h
 	defer resp.Body.Close()
 
 	return resp, nil
+}
+
+func NewHttpClient(followRedirect bool, timeout int) httpClient {
+	var tlsConfig = &tls.Config{InsecureSkipVerify: true}
+
+	var dialContext = &net.Dialer{
+		Timeout:   time.Second * 5,
+		KeepAlive: time.Second,
+	}
+
+	var transport = &http.Transport{
+		MaxIdleConns:      30,
+		IdleConnTimeout:   time.Second,
+		DisableKeepAlives: true,
+		TLSClientConfig:   tlsConfig,
+		DialContext:       dialContext.DialContext,
+	}
+
+	client := http.Client{
+		Transport: transport,
+		Timeout:   time.Duration(timeout) * time.Second,
+	}
+
+	if followRedirect {
+		client.CheckRedirect = nil
+	} else {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+
+	return httpClient{client: client}
 }
