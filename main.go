@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"seye/sharpeye"
+
+	"github.com/rmisiarek/sharpeye/sharpeye"
 )
 
 func main() {
