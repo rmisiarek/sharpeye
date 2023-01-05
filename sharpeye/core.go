@@ -34,6 +34,7 @@ type sharpeye struct {
 	client  httper
 	probe   prober
 	hbypass hbypasser
+	pbypass pbypasser
 	comm    communication
 	config  config
 	options Options
@@ -46,6 +47,7 @@ func NewSharpeye(options Options) (sharpeye, error) {
 	}
 	p := NewProbe()
 	hb := NewHeaderBypass()
+	pb := NewPathBypass()
 	return sharpeye{
 		client: NewHttpClient(
 			config.Probe.Client.Redirect,
@@ -53,6 +55,7 @@ func NewSharpeye(options Options) (sharpeye, error) {
 		),
 		probe:   p,
 		hbypass: hb,
+		pbypass: pb,
 		comm: communication{
 			// feedProbeCh:        make(chan target),
 			feedBypassHeaderCh: make(chan bypassHeaderTarget),
@@ -75,17 +78,19 @@ func (s *sharpeye) startLoop(done chan interface{}) <-chan interface{} {
 		for {
 			select {
 			case in := <-s.probe.input():
-				r := s.probe.run(in, &s.comm.wg, s.client, s.hbypass.input(), s.comm.feedBypassPathCh)
-				s.probe.procesResult(r)
+				s.probe.run(in, &s.comm.wg, s.client, s.hbypass.input(), s.pbypass.input(), s.comm.resultCh)
 			case in := <-s.hbypass.input():
-				r := s.hbypass.run(in, &s.comm.wg, s.client, &s.config)
-				s.hbypass.procesResult(r)
-			case p := <-s.comm.feedBypassPathCh:
-				s.bypassPath(p)
+				s.hbypass.run(in, &s.comm.wg, s.client, &s.config, s.comm.resultCh)
+			case in := <-s.pbypass.input():
+				s.pbypass.run(in, &s.comm.wg, s.client, &s.config)
 			case result := <-s.comm.resultCh:
 				switch result.t {
-				case bypassPathType:
-					processBypassPathResult(result)
+				case probeType:
+					s.probe.procesResult(result)
+				case bypassHeaderType:
+					s.hbypass.procesResult(result)
+					// case bypassPathType:
+					// 	s.pbypass.procesResult(result)
 				}
 			case <-done:
 				fmt.Println("done!")

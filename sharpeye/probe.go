@@ -7,8 +7,8 @@ import (
 
 type prober interface {
 	input() chan target
-	run(target, *sync.WaitGroup, httper, chan<- bypassHeaderTarget, chan<- bypassPathTarget) chan result
-	procesResult(chan result)
+	run(target, *sync.WaitGroup, httper, chan<- bypassHeaderTarget, chan<- bypassPathTarget, chan<- result)
+	procesResult(result)
 }
 
 type probe struct {
@@ -26,14 +26,16 @@ func (s probe) input() chan target {
 }
 
 func (s probe) run(
-	t target, wg *sync.WaitGroup, h httper, bh chan<- bypassHeaderTarget, bp chan<- bypassPathTarget,
-) chan result {
-	r := make(chan result, 1)
-
+	t target,
+	wg *sync.WaitGroup,
+	h httper,
+	bh chan<- bypassHeaderTarget,
+	bp chan<- bypassPathTarget,
+	r chan<- result,
+) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer close(r)
 
 		resp, err := h.request(t.url.String(), t.method, http.Header{})
 		if err != nil {
@@ -42,6 +44,7 @@ func (s probe) run(
 		}
 
 		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			// if resp.StatusCode == http.StatusOK {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -63,12 +66,8 @@ func (s probe) run(
 
 		r <- result{t: probeType, resp: resp}
 	}()
-
-	return r
 }
 
-func (s probe) procesResult(r chan result) {
-	for i := range r {
-		Info("probe  | %d | %-6s | %v", i.resp.StatusCode, i.resp.Request.Method, i.resp.Request.URL)
-	}
+func (s probe) procesResult(r result) {
+	Info("probe | %d | %s | %v", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL)
 }
