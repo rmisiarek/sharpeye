@@ -97,7 +97,7 @@ func (hb hbypass) run(t bypassHeaderTarget, wg *sync.WaitGroup, h httper, cfg *c
 			}
 
 			r <- result{
-				t:            bypassHeaderType,
+				t:            hbypassType,
 				resp:         resp,
 				bypassHeader: b,
 			}

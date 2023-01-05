@@ -10,8 +10,8 @@ type resultType int
 
 const (
 	probeType resultType = iota
-	bypassHeaderType
-	bypassPathType
+	hbypassType
+	pbypassType
 )
 
 type result struct {
@@ -82,15 +82,15 @@ func (s *sharpeye) startLoop(done chan interface{}) <-chan interface{} {
 			case in := <-s.hbypass.input():
 				s.hbypass.run(in, &s.comm.wg, s.client, &s.config, s.comm.resultCh)
 			case in := <-s.pbypass.input():
-				s.pbypass.run(in, &s.comm.wg, s.client, &s.config)
+				s.pbypass.run(in, &s.comm.wg, s.client, &s.config, s.comm.resultCh)
 			case result := <-s.comm.resultCh:
 				switch result.t {
 				case probeType:
 					s.probe.procesResult(result)
-				case bypassHeaderType:
+				case hbypassType:
 					s.hbypass.procesResult(result)
-					// case bypassPathType:
-					// 	s.pbypass.procesResult(result)
+				case pbypassType:
+					s.pbypass.procesResult(result)
 				}
 			case <-done:
 				fmt.Println("done!")
