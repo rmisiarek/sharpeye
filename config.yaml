@@ -1,7 +1,7 @@
 probe:
   client:
     redirect: false
-    timeout: 5
+    timeout: 30
   protocol:
     - https
     - http
@@ -9,62 +9,211 @@ probe:
     - GET
     # - TRACE
     # - DELETE
-paths:
-  # - path: /^path^/
-  # - path: //^path^//
-  # - path: /^path^/.
-  # - path: /./^path^/./
-  # - path: /./^path^/..
-  # - path: /../^path^
-  # - path: /;/^path^
-  # - path: /.;/^path^
-  # - path: //;//^path^
-  # - path: /^path^..;/
-  # - path: /%2e/^path^
-  # - path: /%252e/^path^
-  # - path: /%ef%bc%8f^path^
-  - path: /%ef%bc%8f
+  successOnly: false
+  showErrors: true
 
+paths:
+    - path: "/"
+    - path: "/*"
+    - path: "/%2f/"
+    - path: "/./"
+    - path: "./."
+    - path: "/*/"
+    - path: "?"
+    - path: "??"
+    - path: "&"
+    - path: "#"
+    - path: "%"
+    - path: "%20"
+    - path: "%09"
+    - path: "/..;/"
+    - path: "../"
+    - path: "..%2f"
+    - path: "..;/"
+    - path: ".././"
+    - path: "..%00/"
+    - path: "..%0d"
+    - path: "..%5c"
+    - path: "..%ff/"
+    - path: "%2e%2e%2f"
+    - path: ".%2e/"
+    - path: "%3f"
+    - path: "%26"
+    - path: "%23"
+    - path: ".json"
 
 headers:
   - header: X-Originally-Forwarded-For:-1
-  # - header: X-Originating-IP
-  # - header: True-Client-IP
-  # - header: X-WAP-Profile
-  # - header: X-WAP-Profile
-  # - header: Destination
-  # - header: Proxy
-  # - header: CF-Connecting_IP
-  # - header: CF-Connecting-IP
-  # - header: X-Custom-IP-Authorization
-  # - header: X-Forwarded-For
-  # - header: X-Remote-IP
-  # - header: X-Client-IP
-  # - header: X-Host
-  # - header: X-Forwarded-Host
-  # - header: Content-Length
-  # - header: X-ProxyUser-Ip
-  # - header: Base-Url
-  # - header: Client-IP
-  # - header: Http-Url
-  # - header: Proxy-Host
-  # - header: Proxy-Url
-  # - header: Real-Ip
-  # - header: Redirect
-  # - header: Referrer
-  # - header: Request-Uri
-  # - header: Uri
-  # - header: Url
-  # - header: X-Forward-For
-  # - header: X-Forwarded-By
-  # - header: X-Forwarded-For-Original
-  # - header: X-Forwarded-Server
-  # - header: X-Forwarded
-  # - header: X-Forwarder-For
-  # - header: X-Http-Destinationurl
-  # - header: X-Http-Host-Override
-  # - header: X-Original-Remote-Addr
-  # - header: X-Proxy-Url
-  # - header: X-Real-Ip
-  # - header: X-Remote-Addr
-  # - header: X-OReferrer
+  - header: X-Originating-IP
+  - header: True-Client-IP
+  - header: X-WAP-Profile
+  - header: X-WAP-Profile
+  - header: Destination
+  - header: Proxy:0.0.0.0
+  - header: CF-Connecting_IP
+  - header: CF-Connecting-IP
+  - header: X-Custom-IP-Authorization
+  - header: X-Forwarded-For
+  - header: X-Remote-IP
+  - header: X-Client-IP
+  - header: X-Host
+  - header: X-Forwarded-Host
+  - header: X-ProxyUser-Ip
+  - header: Base-Url
+  - header: Client-IP
+  - header: Http-Url
+  - header: Proxy-Host
+  - header: Proxy-Url
+  - header: Real-Ip
+  - header: Redirect
+  - header: Referrer
+  - header: Request-Uri
+  - header: Uri
+  - header: Url
+  - header: X-Forward-For
+  - header: X-Forwarded-By
+  - header: X-Forwarded-For-Original
+  - header: X-Forwarded-Server
+  - header: X-Forwarded
+  - header: X-Forwarder-For
+  - header: X-Http-Destinationurl
+  - header: X-Http-Host-Override
+  - header: X-Original-Remote-Addr
+  - header: X-Proxy-Url
+  - header: X-Real-Ip
+  - header: X-Remote-Addr
+  - header: X-OReferrer
+
+kube:
+  - path: "/.well-known/openid-configuration"
+  - path: "/api"
+  - path: "/api/v1"
+  - path: "/apis"
+  - path: "/apis/"
+  - path: "/apis/admissionregistration.k8s.io"
+  - path: "/apis/admissionregistration.k8s.io/v1"
+  - path: "/apis/apiextensions.k8s.io"
+  - path: "/apis/apiextensions.k8s.io/v1"
+  - path: "/apis/apiregistration.k8s.io"
+  - path: "/apis/apiregistration.k8s.io/v1"
+  - path: "/apis/apps"
+  - path: "/apis/apps/v1"
+  - path: "/apis/authentication.k8s.io"
+  - path: "/apis/authentication.k8s.io/v1"
+  - path: "/apis/authorization.k8s.io"
+  - path: "/apis/authorization.k8s.io/v1"
+  - path: "/apis/autoscaling"
+  - path: "/apis/autoscaling/v1"
+  - path: "/apis/autoscaling/v2"
+  - path: "/apis/autoscaling/v2beta2"
+  - path: "/apis/batch"
+  - path: "/apis/batch/v1"
+  - path: "/apis/certificates.k8s.io"
+  - path: "/apis/certificates.k8s.io/v1"
+  - path: "/apis/coordination.k8s.io"
+  - path: "/apis/coordination.k8s.io/v1"
+  - path: "/apis/discovery.k8s.io"
+  - path: "/apis/discovery.k8s.io/v1"
+  - path: "/apis/events.k8s.io"
+  - path: "/apis/events.k8s.io/v1"
+  - path: "/apis/flowcontrol.apiserver.k8s.io"
+  - path: "/apis/flowcontrol.apiserver.k8s.io/v1beta1"
+  - path: "/apis/flowcontrol.apiserver.k8s.io/v1beta2"
+  - path: "/apis/networking.k8s.io"
+  - path: "/apis/networking.k8s.io/v1"
+  - path: "/apis/node.k8s.io"
+  - path: "/apis/node.k8s.io/v1"
+  - path: "/apis/policy"
+  - path: "/apis/policy/v1"
+  - path: "/apis/rbac.authorization.k8s.io"
+  - path: "/apis/rbac.authorization.k8s.io/v1"
+  - path: "/apis/scheduling.k8s.io"
+  - path: "/apis/scheduling.k8s.io/v1"
+  - path: "/apis/storage.k8s.io"
+  - path: "/apis/storage.k8s.io/v1"
+  - path: "/apis/storage.k8s.io/v1beta1"
+  - path: "/healthz"
+  - path: "/healthz/autoregister-completion"
+  - path: "/healthz/etcd"
+  - path: "/healthz/log"
+  - path: "/healthz/ping"
+  - path: "/healthz/poststarthook/aggregator-reload-proxy-client-cert"
+  - path: "/healthz/poststarthook/apiservice-openapi-controller"
+  - path: "/healthz/poststarthook/apiservice-openapiv3-controller"
+  - path: "/healthz/poststarthook/apiservice-registration-controller"
+  - path: "/healthz/poststarthook/apiservice-status-available-controller"
+  - path: "/healthz/poststarthook/bootstrap-controller"
+  - path: "/healthz/poststarthook/crd-informer-synced"
+  - path: "/healthz/poststarthook/generic-apiserver-start-informers"
+  - path: "/healthz/poststarthook/kube-apiserver-autoregistration"
+  - path: "/healthz/poststarthook/priority-and-fairness-config-consumer"
+  - path: "/healthz/poststarthook/priority-and-fairness-config-producer"
+  - path: "/healthz/poststarthook/priority-and-fairness-filter"
+  - path: "/healthz/poststarthook/rbac/bootstrap-roles"
+  - path: "/healthz/poststarthook/scheduling/bootstrap-system-priority-classes"
+  - path: "/healthz/poststarthook/start-apiextensions-controllers"
+  - path: "/healthz/poststarthook/start-apiextensions-informers"
+  - path: "/healthz/poststarthook/start-cluster-authentication-info-controller"
+  - path: "/healthz/poststarthook/start-kube-aggregator-informers"
+  - path: "/healthz/poststarthook/start-kube-apiserver-admission-initializer"
+  - path: "/healthz/poststarthook/storage-object-count-tracker-hook"
+  - path: "/livez"
+  - path: "/livez/autoregister-completion"
+  - path: "/livez/etcd"
+  - path: "/livez/log"
+  - path: "/livez/ping"
+  - path: "/livez/poststarthook/aggregator-reload-proxy-client-cert"
+  - path: "/livez/poststarthook/apiservice-openapi-controller"
+  - path: "/livez/poststarthook/apiservice-openapiv3-controller"
+  - path: "/livez/poststarthook/apiservice-registration-controller"
+  - path: "/livez/poststarthook/apiservice-status-available-controller"
+  - path: "/livez/poststarthook/bootstrap-controller"
+  - path: "/livez/poststarthook/crd-informer-synced"
+  - path: "/livez/poststarthook/generic-apiserver-start-informers"
+  - path: "/livez/poststarthook/kube-apiserver-autoregistration"
+  - path: "/livez/poststarthook/priority-and-fairness-config-consumer"
+  - path: "/livez/poststarthook/priority-and-fairness-config-producer"
+  - path: "/livez/poststarthook/priority-and-fairness-filter"
+  - path: "/livez/poststarthook/rbac/bootstrap-roles"
+  - path: "/livez/poststarthook/scheduling/bootstrap-system-priority-classes"
+  - path: "/livez/poststarthook/start-apiextensions-controllers"
+  - path: "/livez/poststarthook/start-apiextensions-informers"
+  - path: "/livez/poststarthook/start-cluster-authentication-info-controller"
+  - path: "/livez/poststarthook/start-kube-aggregator-informers"
+  - path: "/livez/poststarthook/start-kube-apiserver-admission-initializer"
+  - path: "/livez/poststarthook/storage-object-count-tracker-hook"
+  - path: "/logs"
+  - path: "/metrics"
+  - path: "/openapi/v2"
+  - path: "/openapi/v3"
+  - path: "/openapi/v3/"
+  - path: "/openid/v1/jwks"
+  - path: "/readyz"
+  - path: "/readyz/autoregister-completion"
+  - path: "/readyz/etcd"
+  - path: "/readyz/etcd-readiness"
+  - path: "/readyz/informer-sync"
+  - path: "/readyz/log"
+  - path: "/readyz/ping"
+  - path: "/readyz/poststarthook/aggregator-reload-proxy-client-cert"
+  - path: "/readyz/poststarthook/apiservice-openapi-controller"
+  - path: "/readyz/poststarthook/apiservice-openapiv3-controller"
+  - path: "/readyz/poststarthook/apiservice-registration-controller"
+  - path: "/readyz/poststarthook/apiservice-status-available-controller"
+  - path: "/readyz/poststarthook/bootstrap-controller"
+  - path: "/readyz/poststarthook/crd-informer-synced"
+  - path: "/readyz/poststarthook/generic-apiserver-start-informers"
+  - path: "/readyz/poststarthook/kube-apiserver-autoregistration"
+  - path: "/readyz/poststarthook/priority-and-fairness-config-consumer"
+  - path: "/readyz/poststarthook/priority-and-fairness-config-producer"
+  - path: "/readyz/poststarthook/priority-and-fairness-filter"
+  - path: "/readyz/poststarthook/rbac/bootstrap-roles"
+  - path: "/readyz/poststarthook/scheduling/bootstrap-system-priority-classes"
+  - path: "/readyz/poststarthook/start-apiextensions-controllers"
+  - path: "/readyz/poststarthook/start-apiextensions-informers"
+  - path: "/readyz/poststarthook/start-cluster-authentication-info-controller"
+  - path: "/readyz/poststarthook/start-kube-aggregator-informers"
+  - path: "/readyz/poststarthook/start-kube-apiserver-admission-initializer"
+  - path: "/readyz/poststarthook/storage-object-count-tracker-hook"
+  - path: "/readyz/shutdown"
+  - path: "/version"

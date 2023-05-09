@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/fatih/color"
 )
@@ -28,8 +27,8 @@ type bypassHeaderTarget struct {
 
 type hbypasser interface {
 	input() chan bypassHeaderTarget
-	run(bypassHeaderTarget, *sync.WaitGroup, httper, *config, chan<- result)
-	procesResult(result)
+	run(bypassHeaderTarget, httper, *config, *communication)
+	procesResult(result, bool)
 }
 
 type hbypass struct {
@@ -46,7 +45,7 @@ func (hb hbypass) input() chan bypassHeaderTarget {
 	return hb.in
 }
 
-func (hb hbypass) run(t bypassHeaderTarget, wg *sync.WaitGroup, h httper, cfg *config, r chan<- result) {
+func (hb hbypass) run(t bypassHeaderTarget, h httper, cfg *config, msg *communication) {
 	for _, payload := range cfg.Headers {
 		var header, value string
 		p := strings.Split(strings.TrimSpace(payload.Header), ":")
@@ -62,9 +61,9 @@ func (hb hbypass) run(t bypassHeaderTarget, wg *sync.WaitGroup, h httper, cfg *c
 			continue
 		}
 
-		wg.Add(1)
+		msg.wg.Add(1)
 		go func(url, method, header, value string) {
-			defer wg.Done()
+			defer msg.wg.Done()
 
 			resp, err := h.request(t.url.String(), t.method, http.Header{header: []string{value}})
 			if err != nil {
@@ -96,7 +95,7 @@ func (hb hbypass) run(t bypassHeaderTarget, wg *sync.WaitGroup, h httper, cfg *c
 				b.bodyReflection = foundBodyReflection
 			}
 
-			r <- result{
+			msg.res <- result{
 				t:            hbypassType,
 				resp:         resp,
 				bypassHeader: b,
@@ -105,7 +104,11 @@ func (hb hbypass) run(t bypassHeaderTarget, wg *sync.WaitGroup, h httper, cfg *c
 	}
 }
 
-func (hb hbypass) procesResult(r result) {
+func (hb hbypass) procesResult(r result, so bool) {
+	if so && (r.resp.StatusCode < 200 || r.resp.StatusCode > 300) {
+		return
+	}
+
 	delete(r.resp.Request.Header, "Connection")
 
 	statusCode := strconv.Itoa(r.resp.StatusCode)
@@ -126,18 +129,18 @@ func (hb hbypass) procesResult(r result) {
 	}
 
 	if r.bypassHeader.statusCodeDiffer != "" || len(r.bypassHeader.headersReflection) > 0 || len(r.bypassHeader.valuesReflection) > 0 {
-		Success("header | %s | %-6v | %s ( %s )", statusCode, r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypassHeader.headerTried))
+		Success("header | %s | %-6s | %s ( %s )", color.GreenString(statusCode), r.resp.Request.Method, r.resp.Request.URL.String(), color.GreenString(r.bypassHeader.headerTried))
 		if reflectedHeaders != "" {
-			Success("header | %s | %-6v | \t>> found reflected header key in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedHeaders))
+			Success("header | %s | %-6s | \t>> found reflected header key in headers: %s", color.GreenString(statusCode), r.resp.Request.Method, color.GreenString(reflectedHeaders))
 		}
 		if reflectedValues != "" {
-			Success("header | %s | %-6v | \t>> found reflected header value in headers: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedValues))
+			Success("header | %s | %-6s | \t>> found reflected header value in headers: %s", color.GreenString(statusCode), r.resp.Request.Method, color.GreenString(reflectedValues))
 		}
 		if reflectedBodyValues != "" {
-			Success("header | %s | %-6v | \t>> found reflected header value in body: %s", statusCode, r.resp.Request.Method, color.GreenString(reflectedBodyValues))
+			Success("header | %s | %-6s | \t>> found reflected header value in body: %s", color.GreenString(statusCode), r.resp.Request.Method, color.GreenString(reflectedBodyValues))
 		}
 	} else {
-		Info("header | %d | %-6v | %s ( %s )", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassHeader.headerTried))
+		Info("header | %d | %-6s | %s ( %s )", r.resp.StatusCode, r.resp.Request.Method, r.resp.Request.URL, color.BlueString(r.bypassHeader.headerTried))
 	}
 }
 

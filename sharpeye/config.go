@@ -17,8 +17,10 @@ type config struct {
 			Redirect bool `yaml:"redirect"`
 			Timeout  int  `yaml:"timeout"`
 		} `yaml:"client"`
-		Protocol []string `yaml:"protocol"`
-		Method   []string `yaml:"method"`
+		Protocol    []string `yaml:"protocol"`
+		Method      []string `yaml:"method"`
+		SuccessOnly bool     `yaml:"successOnly"`
+		ShowErrors  bool     `yaml:"showErrors"`
 	} `yaml:"probe"`
 	Headers []struct {
 		Header string `yaml:"header"`
@@ -26,6 +28,9 @@ type config struct {
 	Paths []struct {
 		Path string `yaml:"path"`
 	} `yaml:"paths"`
+	Kube []struct {
+		Path string `yaml:"path"`
+	} `yaml:"kube"`
 }
 
 func (o Options) loadConfig() (config, error) {

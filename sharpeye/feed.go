@@ -28,13 +28,13 @@ func (s *sharpeye) feed() {
 		for _, protocol := range s.config.Probe.Protocol {
 			parsedURL, err := prepareURL(rawURL, protocol)
 			if err != nil {
-				Error(err.Error())
+				s.msg.err <- err
 				continue
 			}
 			for _, method := range s.config.Probe.Method {
-				s.comm.wg.Add(1)
+				s.msg.wg.Add(1)
 				go func(url *url.URL, method string) {
-					defer s.comm.wg.Done()
+					defer s.msg.wg.Done()
 					s.probe.input() <- target{url: parsedURL, method: method}
 				}(parsedURL, method)
 			}

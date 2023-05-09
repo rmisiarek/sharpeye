@@ -10,6 +10,7 @@ type resultType int
 
 const (
 	probeType resultType = iota
+	kprobeType
 	hbypassType
 	pbypassType
 )
@@ -17,15 +18,18 @@ const (
 type result struct {
 	t            resultType
 	resp         *http.Response
+	kubeProbe    kpresult
 	bypassHeader hbresult
 	bypassPath   bypassPath
 }
 
 type communication struct {
 	// feedProbeCh        chan target
-	feedBypassHeaderCh chan bypassHeaderTarget
-	feedBypassPathCh   chan bypassPathTarget
-	resultCh           chan result
+	kp  chan kubeProbeTarget
+	hb  chan bypassHeaderTarget
+	pb  chan bypassPathTarget
+	res chan result
+	err chan error
 	// done               chan interface{}
 	wg sync.WaitGroup
 }
@@ -33,9 +37,10 @@ type communication struct {
 type sharpeye struct {
 	client  httper
 	probe   prober
+	kprobe  kubeProber
 	hbypass hbypasser
 	pbypass pbypasser
-	comm    communication
+	msg     communication
 	config  config
 	options Options
 }
@@ -48,21 +53,24 @@ func NewSharpeye(options Options) (sharpeye, error) {
 	p := NewProbe()
 	hb := NewHeaderBypass()
 	pb := NewPathBypass()
+	kp := NewKubeProbe()
 	return sharpeye{
 		client: NewHttpClient(
 			config.Probe.Client.Redirect,
 			config.Probe.Client.Timeout,
 		),
 		probe:   p,
+		kprobe:  kp,
 		hbypass: hb,
 		pbypass: pb,
-		comm: communication{
+		msg: communication{
 			// feedProbeCh:        make(chan target),
-			feedBypassHeaderCh: make(chan bypassHeaderTarget),
-			feedBypassPathCh:   make(chan bypassPathTarget),
-			resultCh:           make(chan result),
-			// done:               make(chan interface{}),
-			wg: sync.WaitGroup{},
+			kp:  kp.input(),
+			hb:  hb.input(),
+			pb:  pb.input(),
+			res: make(chan result),
+			err: make(chan error),
+			wg:  sync.WaitGroup{},
 		},
 		config:  config,
 		options: options,
@@ -78,19 +86,25 @@ func (s *sharpeye) startLoop(done chan interface{}) <-chan interface{} {
 		for {
 			select {
 			case in := <-s.probe.input():
-				s.probe.run(in, &s.comm.wg, s.client, s.hbypass.input(), s.pbypass.input(), s.comm.resultCh)
+				s.probe.run(in, s.client, &s.msg)
+			case in := <-s.kprobe.input():
+				s.kprobe.run(in, s.client, &s.config, &s.msg)
 			case in := <-s.hbypass.input():
-				s.hbypass.run(in, &s.comm.wg, s.client, &s.config, s.comm.resultCh)
+				s.hbypass.run(in, s.client, &s.config, &s.msg)
 			case in := <-s.pbypass.input():
-				s.pbypass.run(in, &s.comm.wg, s.client, &s.config, s.comm.resultCh)
-			case result := <-s.comm.resultCh:
+				s.pbypass.run(in, s.client, &s.config, &s.msg)
+			case in := <-s.msg.err:
+				processError(in, s.config.Probe.ShowErrors)
+			case result := <-s.msg.res:
 				switch result.t {
 				case probeType:
-					s.probe.procesResult(result)
+					s.probe.procesResult(result, s.config.Probe.SuccessOnly)
+				case kprobeType:
+					s.kprobe.procesResult(result, s.config.Probe.SuccessOnly)
 				case hbypassType:
-					s.hbypass.procesResult(result)
+					s.hbypass.procesResult(result, s.config.Probe.SuccessOnly)
 				case pbypassType:
-					s.pbypass.procesResult(result)
+					s.pbypass.procesResult(result, s.config.Probe.SuccessOnly)
 				}
 			case <-done:
 				fmt.Println("done!")
@@ -108,7 +122,7 @@ func (s *sharpeye) Start() {
 	ended := s.startLoop(done)
 
 	go func() {
-		s.comm.wg.Wait()
+		s.msg.wg.Wait()
 		close(done)
 	}()
 
